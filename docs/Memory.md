@@ -1,4 +1,4 @@
-# Memory Document
+﻿# Memory Document
 **Project:** Internal Knowledge Chatbot — Venus Remedies
 
 > Update this file after every work session. Keep entries short and factual — this exists so anyone (including a future AI session) can pick up exactly where work left off, without re-reading the whole conversation history.
@@ -42,4 +42,3 @@
 | 2026-07-28 | Reverted incorrect custom Express backend (created without instruction); restored clean Supabase-Auth-based frontend for Phase 1 |
 | 2026-07-25 | Supabase project `knowledge-chatbot` created; Phase 1 Login code (Supabase Auth) built and delivered |
 | 2026-07-25 | Initial 6 planning docs created: Project-Requirements.md, Architecture.md, Rules.md, Phases.md, Design.md, Memory.md |
-'@ | Set-Content -Path docs\Memory.md -Encoding UTF8
