@@ -1,5 +1,7 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+
 export default function Home() {
   const { user, signOut } = useAuth();
   return (
@@ -47,7 +49,22 @@ export default function Home() {
           The chat interface arrives in Phase 3. Next up per <code>docs/Phases.md</code>: Phase 2 —
           document ingestion pipeline.
         </p>
+        <Link
+          to="/upload"
+          style={{
+            marginTop: 24,
+            padding: '10px 20px',
+            borderRadius: 8,
+            background: '#0F6E7D',
+            color: '#fff',
+            fontSize: 13.5,
+            fontWeight: 600,
+            textDecoration: 'none',
+          }}
+        >
+          Go to Upload →
+        </Link>
       </div>
     </div>
   );
-} 
+}
