@@ -6,6 +6,7 @@ import { AdminRoute } from './routes/AdminRoute.jsx';
 import Login from './pages/Login.jsx';
 import Home from './pages/Home.jsx';
 import Upload from './pages/Upload.jsx';
+import ResetPassword from './pages/ResetPassword.jsx';
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route
             path="/"
             element={

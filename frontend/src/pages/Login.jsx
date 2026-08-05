@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -11,45 +11,109 @@ const COLORS = {
   warning: '#D97706',
 };
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_SECONDS = 60;
+
 export default function Login() {
-  const { user, loading, signIn, signUp } = useAuth();
+  const { user, loading, signIn, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
 
-  const [mode, setMode] = useState('signin'); // 'signin' | 'signup'
+  const [mode, setMode] = useState('signin'); // 'signin' | 'signup' | 'forgot'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState(null);
+  const [secondsLeft, setSecondsLeft] = useState(0);
 
-  // Already logged in? Skip the login screen entirely.
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const tick = () => {
+      const remaining = Math.ceil((lockedUntil - Date.now()) / 1000);
+      if (remaining <= 0) {
+        setLockedUntil(null);
+        setAttempts(0);
+        setSecondsLeft(0);
+      } else {
+        setSecondsLeft(remaining);
+      }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [lockedUntil]);
+
   if (!loading && user) {
     return <Navigate to="/" replace />;
   }
+
+  const isLocked = !!lockedUntil && secondsLeft > 0;
+
+  const validate = () => {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !EMAIL_RE.test(trimmedEmail)) {
+      return 'Please enter a valid email address.';
+    }
+    if (mode === 'forgot') return '';
+    if (!password) {
+      return 'Please enter your password.';
+    }
+    if (mode === 'signup' && password.length < 8) {
+      return 'Password must be at least 8 characters.';
+    }
+    return '';
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setInfo('');
 
-    if (!email.trim() || !password) {
-      setError('Please enter both your email and password.');
+    if (isLocked) {
+      setError(`Too many failed attempts. Try again in ${secondsLeft}s.`);
+      return;
+    }
+
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
     setSubmitting(true);
     try {
+      if (mode === 'forgot') {
+        const { error: resetError } = await resetPassword(email.trim());
+        if (resetError) {
+          setError('Could not send reset email. Please try again.');
+          return;
+        }
+        setInfo('If that email is registered, a reset link has been sent. Check your inbox.');
+        return;
+      }
+
       if (mode === 'signin') {
         const { error: signInError } = await signIn(email.trim(), password);
         if (signInError) {
-          setError(signInError.message);
+          const nextAttempts = attempts + 1;
+          setAttempts(nextAttempts);
+          if (nextAttempts >= MAX_ATTEMPTS) {
+            setLockedUntil(Date.now() + LOCKOUT_SECONDS * 1000);
+            setError(`Too many failed attempts. Try again in ${LOCKOUT_SECONDS}s.`);
+          } else {
+            setError('Invalid email or password.');
+          }
           return;
         }
+        setAttempts(0);
         navigate('/');
       } else {
         const { error: signUpError } = await signUp(email.trim(), password);
         if (signUpError) {
-          setError(signUpError.message);
+          setError('Could not create account. Please try again.');
           return;
         }
         setInfo('Account created. Check your email to confirm, then sign in.');
@@ -59,6 +123,8 @@ export default function Login() {
       setSubmitting(false);
     }
   };
+
+  const titleText = mode === 'forgot' ? 'Reset your password' : mode === 'signup' ? 'Create your account' : 'Sign in with your company email';
 
   return (
     <div style={{
@@ -91,7 +157,7 @@ export default function Login() {
             Knowledge Assistant
           </h1>
           <p style={{ margin: '6px 0 0', fontSize: 13, color: COLORS.muted }}>
-            {mode === 'signin' ? 'Sign in with your company email' : 'Create your account'}
+            {titleText}
           </p>
         </div>
 
@@ -105,20 +171,38 @@ export default function Login() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@venusremedies.com"
             autoComplete="email"
+            disabled={isLocked}
             style={inputStyle}
           />
 
-          <label style={{ display: 'block', fontSize: 12, color: COLORS.muted, margin: '14px 0 4px' }}>
-            Password
-          </label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-            style={inputStyle}
-          />
+          {mode !== 'forgot' && (
+            <>
+              <label style={{ display: 'block', fontSize: 12, color: COLORS.muted, margin: '14px 0 4px' }}>
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                disabled={isLocked}
+                style={inputStyle}
+              />
+            </>
+          )}
+
+          {mode === 'signin' && (
+            <div style={{ textAlign: 'right', marginTop: 8 }}>
+              <button
+                type="button"
+                onClick={() => { setMode('forgot'); setError(''); setInfo(''); }}
+                style={linkButtonStyle}
+              >
+                Forgot password?
+              </button>
+            </div>
+          )}
 
           {error && (
             <div style={{
@@ -142,39 +226,40 @@ export default function Login() {
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || isLocked}
             style={{
               width: '100%', marginTop: 20, padding: '11px 0', border: 'none',
-              borderRadius: 8, background: submitting ? '#7FA9AF' : COLORS.primary,
+              borderRadius: 8, background: (submitting || isLocked) ? '#7FA9AF' : COLORS.primary,
               color: '#fff', fontWeight: 600, fontSize: 14,
-              cursor: submitting ? 'default' : 'pointer',
+              cursor: (submitting || isLocked) ? 'default' : 'pointer',
             }}
           >
-            {submitting ? 'Please wait…' : mode === 'signin' ? 'Sign In' : 'Create Account'}
+            {isLocked ? `Locked (${secondsLeft}s)` : submitting ? 'Please wait…' : mode === 'forgot' ? 'Send reset link' : mode === 'signup' ? 'Create Account' : 'Sign In'}
           </button>
         </form>
 
         <div style={{ marginTop: 18, textAlign: 'center', fontSize: 12.5, color: COLORS.muted }}>
-          {mode === 'signin' ? (
+          {mode === 'signin' && (
             <>
               New here?{' '}
-              <button
-                type="button"
-                onClick={() => { setMode('signup'); setError(''); setInfo(''); }}
-                style={linkButtonStyle}
-              >
+              <button type="button" onClick={() => { setMode('signup'); setError(''); setInfo(''); }} style={linkButtonStyle}>
                 Create an account
               </button>
             </>
-          ) : (
+          )}
+          {mode === 'signup' && (
             <>
               Already have an account?{' '}
-              <button
-                type="button"
-                onClick={() => { setMode('signin'); setError(''); setInfo(''); }}
-                style={linkButtonStyle}
-              >
+              <button type="button" onClick={() => { setMode('signin'); setError(''); setInfo(''); }} style={linkButtonStyle}>
                 Sign in
+              </button>
+            </>
+          )}
+          {mode === 'forgot' && (
+            <>
+              Remembered it?{' '}
+              <button type="button" onClick={() => { setMode('signin'); setError(''); setInfo(''); }} style={linkButtonStyle}>
+                Back to sign in
               </button>
             </>
           )}

@@ -12,6 +12,10 @@ const COLORS = {
   success: '#2E8B57',
 };
 
+const MAX_TITLE_LEN = 200;
+const MAX_CONTENT_LEN = 200000; // ~200k chars, comfortably below edge-function compute limits
+const MAX_PDF_MB = 8;
+
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -22,7 +26,7 @@ function fileToBase64(file) {
 }
 
 export default function Upload() {
-  const [mode, setMode] = useState('text'); // 'text' | 'pdf'
+  const [mode, setMode] = useState('text');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [pdfFile, setPdfFile] = useState(null);
@@ -32,19 +36,42 @@ export default function Upload() {
   const isError = status.startsWith('Error');
   const isDone = status.startsWith('Done');
 
+  const validate = () => {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) return 'Title is required.';
+    if (trimmedTitle.length > MAX_TITLE_LEN) return `Title must be under ${MAX_TITLE_LEN} characters.`;
+
+    if (mode === 'text') {
+      const trimmedContent = content.trim();
+      if (!trimmedContent) return 'Document text is required.';
+      if (trimmedContent.length > MAX_CONTENT_LEN) return `Document text is too long (max ${MAX_CONTENT_LEN.toLocaleString()} characters).`;
+    } else {
+      if (!pdfFile) return 'Please select a PDF file.';
+      if (pdfFile.type !== 'application/pdf') return 'Only PDF files are allowed.';
+      const sizeMB = pdfFile.size / (1024 * 1024);
+      if (sizeMB > MAX_PDF_MB) return `PDF is too large (max ${MAX_PDF_MB}MB). Large books/manuals aren't supported yet.`;
+    }
+    return '';
+  };
+
   const handleUpload = async (e) => {
     e.preventDefault();
+    const validationError = validate();
+    if (validationError) {
+      setStatus(`Error: ${validationError}`);
+      return;
+    }
+
     setStatus('Uploading...');
     setSubmitting(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
-      const body = { title };
+      const body = { title: title.trim() };
       if (mode === 'pdf') {
-        if (!pdfFile) { setStatus('Error: Please select a PDF file'); return; }
         body.pdfBase64 = await fileToBase64(pdfFile);
       } else {
-        body.content = content;
+        body.content = content.trim();
       }
 
       const res = await fetch(
@@ -59,9 +86,11 @@ export default function Upload() {
         }
       );
       const data = await res.json();
-      if (!res.ok) { setStatus(`Error: ${data.error}`); return; }
+      if (!res.ok) { setStatus(`Error: ${data.error || 'Upload failed. Please try again.'}`); return; }
       setStatus(`Done! Stored ${data.chunksStored} chunks.`);
       setTitle(''); setContent(''); setPdfFile(null);
+    } catch (err) {
+      setStatus('Error: Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -108,18 +137,10 @@ export default function Upload() {
         </p>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          <button
-            type="button"
-            onClick={() => setMode('text')}
-            style={tabStyle(mode === 'text')}
-          >
+          <button type="button" onClick={() => setMode('text')} style={tabStyle(mode === 'text')}>
             Paste Text
           </button>
-          <button
-            type="button"
-            onClick={() => setMode('pdf')}
-            style={tabStyle(mode === 'pdf')}
-          >
+          <button type="button" onClick={() => setMode('pdf')} style={tabStyle(mode === 'pdf')}>
             Upload PDF
           </button>
         </div>
@@ -132,6 +153,7 @@ export default function Upload() {
             value={title}
             onChange={e => setTitle(e.target.value)}
             placeholder="e.g. IT Onboarding Guide"
+            maxLength={MAX_TITLE_LEN}
             style={inputStyle}
           />
 
@@ -145,13 +167,17 @@ export default function Upload() {
                 onChange={e => setContent(e.target.value)}
                 placeholder="Paste document text"
                 rows={10}
+                maxLength={MAX_CONTENT_LEN}
                 style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
               />
+              <p style={{ marginTop: 4, fontSize: 11, color: COLORS.muted, textAlign: 'right' }}>
+                {content.length.toLocaleString()} / {MAX_CONTENT_LEN.toLocaleString()}
+              </p>
             </>
           ) : (
             <>
               <label style={{ display: 'block', fontSize: 12, color: COLORS.muted, margin: '14px 0 4px' }}>
-                PDF file
+                PDF file (max {MAX_PDF_MB}MB)
               </label>
               <input
                 type="file"
@@ -161,7 +187,7 @@ export default function Upload() {
               />
               {pdfFile && (
                 <p style={{ marginTop: 6, fontSize: 12, color: COLORS.muted }}>
-                  Selected: {pdfFile.name}
+                  Selected: {pdfFile.name} ({(pdfFile.size / (1024 * 1024)).toFixed(2)} MB)
                 </p>
               )}
             </>

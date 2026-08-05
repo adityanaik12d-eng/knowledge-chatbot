@@ -45,7 +45,15 @@ export function AuthProvider({ children }) {
 
   const signOut = () => supabase.auth.signOut();
 
-  const value = { user, role, loading, signIn, signUp, signOut, isAdmin: role === 'admin' };
+  const resetPassword = (email) =>
+    supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+  const updatePassword = (newPassword) =>
+    supabase.auth.updateUser({ password: newPassword });
+
+  const value = { user, role, loading, signIn, signUp, signOut, resetPassword, updatePassword, isAdmin: role === 'admin' };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
