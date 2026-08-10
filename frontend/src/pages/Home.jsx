@@ -43,27 +43,31 @@ export default function Home() {
           ✓
         </div>
         <h2 style={{ margin: '0 0 8px', fontSize: 18, color: '#0F2A2E' }}>
-          You're logged in — Phase 1 complete
+          Welcome to Knowledge Assistant
         </h2>
-        <p style={{ margin: 0, fontSize: 13.5, color: '#6B7280', maxWidth: 380 }}>
-          The chat interface arrives in Phase 3. Next up per <code>docs/Phases.md</code>: Phase 2 —
-          document ingestion pipeline.
+        <p style={{ margin: '0 0 24px', fontSize: 13.5, color: '#6B7280', maxWidth: 380 }}>
+          Ask questions about IT/CSE documentation and get grounded, sourced answers.
         </p>
-        <Link
-          to="/upload"
-          style={{
-            marginTop: 24,
-            padding: '10px 20px',
-            borderRadius: 8,
-            background: '#0F6E7D',
-            color: '#fff',
-            fontSize: 13.5,
-            fontWeight: 600,
-            textDecoration: 'none',
-          }}
-        >
-          Go to Upload →
-        </Link>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <Link
+            to="/chat"
+            style={{
+              padding: '10px 20px', borderRadius: 8, background: '#0F6E7D', color: '#fff',
+              fontSize: 13.5, fontWeight: 600, textDecoration: 'none',
+            }}
+          >
+            Start Chat →
+          </Link>
+          <Link
+            to="/upload"
+            style={{
+              padding: '10px 20px', borderRadius: 8, background: '#FFFFFF', color: '#0F6E7D',
+              border: '1px solid #0F6E7D', fontSize: 13.5, fontWeight: 600, textDecoration: 'none',
+            }}
+          >
+            Upload Document
+          </Link>
+        </div>
       </div>
     </div>
   );

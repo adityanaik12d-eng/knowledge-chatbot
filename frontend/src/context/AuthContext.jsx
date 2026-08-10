@@ -6,30 +6,32 @@ const AuthContext = createContext(undefined);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
+  const [department, setDepartment] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const loadRole = async (userId) => {
-    if (!userId) { setRole(null); return; }
+  const loadProfile = async (userId) => {
+    if (!userId) { setRole(null); setDepartment(null); return; }
     const { data } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, department')
       .eq('id', userId)
       .single();
     setRole(data?.role ?? 'employee');
+    setDepartment(data?.department ?? 'unassigned');
   };
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       const currentUser = data.session?.user ?? null;
       setUser(currentUser);
-      await loadRole(currentUser?.id);
+      await loadProfile(currentUser?.id);
       setLoading(false);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      await loadRole(currentUser?.id);
+      await loadProfile(currentUser?.id);
     });
 
     return () => {
@@ -53,7 +55,12 @@ export function AuthProvider({ children }) {
   const updatePassword = (newPassword) =>
     supabase.auth.updateUser({ password: newPassword });
 
-  const value = { user, role, loading, signIn, signUp, signOut, resetPassword, updatePassword, isAdmin: role === 'admin' };
+  const value = {
+    user, role, department, loading,
+    signIn, signUp, signOut, resetPassword, updatePassword,
+    isAdmin: role === 'admin',
+    isITCSE: department === 'IT/CSE',
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
