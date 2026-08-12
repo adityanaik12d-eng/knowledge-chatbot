@@ -133,7 +133,7 @@ export default function Upload() {
           Upload Document
         </h2>
         <p style={{ margin: '0 0 20px', fontSize: 13, color: COLORS.muted }}>
-          Paste text or upload a PDF to add it to the knowledge base.
+          Optional: add internal docs, code, or notes here to give the assistant extra context on IT/CSE-specific things. Not required — the assistant can already answer general and technical questions without any upload.
         </p>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>

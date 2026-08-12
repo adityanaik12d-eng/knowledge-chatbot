@@ -40,13 +40,13 @@ export default function Home() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: '#fff', fontSize: 22, fontWeight: 700, marginBottom: 18,
         }}>
-          ✓
+            ✓
         </div>
         <h2 style={{ margin: '0 0 8px', fontSize: 18, color: '#0F2A2E' }}>
           Welcome to Knowledge Assistant
         </h2>
         <p style={{ margin: '0 0 24px', fontSize: 13.5, color: '#6B7280', maxWidth: 380 }}>
-          Ask questions about IT/CSE documentation and get grounded, sourced answers.
+          Ask anything — code, IT concepts, troubleshooting, or your team's internal docs.
         </p>
         <div style={{ display: 'flex', gap: 12 }}>
           <Link
