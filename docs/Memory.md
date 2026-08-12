@@ -31,34 +31,33 @@
   - `ProtectedRoute.jsx` gates on `isITCSE`; non-IT/CSE users redirected to `/access-denied` (`AccessDenied.jsx`, with working logout that properly navigates to `/login`)
   - Both Edge Functions (`ingest`, `chat`) independently check `profiles.department === 'IT/CSE'` server-side
   - Known accounts: `adityanaik.12d@gmail.com` (admin, IT/CSE), `eduhorizon.67@gmail.com` (employee, IT/CSE — test account)
-- [x] **Major architecture pivot (2026-08-09 through 2026-08-12): COMPLETE & VERIFIED**
-  - Moved from strict "only answer from uploaded documents" (RAG-only) model to a **general-reasoning assistant model** — like Claude/ChatGPT. The assistant now answers freely from its own knowledge (NVIDIA `meta/llama-3.1-8b-instruct`), and uses uploaded documents only as *optional* enrichment context — cited when relevant, never a hard requirement to answer
-  - Reason for pivot: strict retrieval-only grounding was causing frustrating false-negatives ("I don't have enough information" even when the answer existed in an uploaded doc) despite several tuning attempts (match count 5→8→12, threshold adjustments, prompt tweaks). A more serious hallucination bug was also found and fixed along the way (assistant fabricated a fake "leave policy" when conversation history existed but no document matched — fixed by making the retrieval-empty fallback unconditional in the old model; this whole issue became moot after the pivot to reasoning-first)
-  - Trade-off consciously accepted: answers are no longer guaranteed traceable to a source — this differs from the original core safety rule for this pharma-company internal tool. Documented explicitly for future reference.
-  - Planning docs rewritten to reflect this: `Project-Requirements.md`, `Architecture.md`, `Rules.md`, `Phases.md` all updated
-  - Natural Hinglish tone fixed via system prompt (previously produced stiff, overly formal/textbook Hindi translations — now matches casual bilingual chat style)
-  - Retrieval performance: time-boxed to 4 seconds (never blocks the answer if slow), `max_tokens` reduced 1500→800 for faster typical replies
-  - Model history: `meta/llama-3.3-70b-instruct` tried first, abandoned (too slow/unreliable on NVIDIA free tier, timed out even at 55s) — settled on `meta/llama-3.1-8b-instruct`, fast and reliable
-- [x] **Multi-chat history (Claude-style): COMPLETE & VERIFIED**
-  - New tables: `conversations` (id, user_id, title, created_at, updated_at) and `messages` (id, conversation_id, user_id, role, content, sources jsonb, created_at) — both RLS-enabled, users can only access their own rows
-  - `Chat.jsx` rebuilt with a left sidebar: conversation list (most recent first), "+ New Chat" button, click-to-switch, full persistence (survives page refresh)
-  - New conversations only get a DB row on first message sent (avoids empty junk conversations); title auto-derived from first ~40 chars of that message
-  - Fixed a bug where switching to a past conversation showed empty user bubbles and permanently-stuck "Thinking…" — caused by a field-name mismatch (DB column `content` vs. UI's expected `text` field) in the message-loading function
-- [x] **Inline file upload in chat (Claude-style "+" button): COMPLETE & VERIFIED**
-  - "+" icon added to the chat input bar; uploads go straight into the shared knowledge base via the existing `ingest` Edge Function (same behavior as the separate Upload page — this was a deliberate choice, not ephemeral/session-only)
-  - Upload status shown as inline system-style messages in the chat (uploading → success/error with chunk count), not persisted to the messages table
-  - Fixed an auth bug: the upload function was reading `user.access_token` (doesn't exist — only `session` objects have that) instead of getting the token via `supabase.auth.getSession()`, causing all uploads to fail with "Not authenticated"
+- [x] **Phase 3 — Core Chat + Reasoning: COMPLETE** (redefined mid-phase, see pivot below)
+  - New DB function `match_documents()` for pgvector cosine similarity search
+  - `chat` Edge Function: streaming responses (NDJSON protocol), conversation memory
+  - **Major architecture pivot (2026-08-09 through 2026-08-12):** moved from strict "only answer from uploaded documents" (RAG-only) model to a **general-reasoning assistant model** — like Claude/ChatGPT. The assistant now answers freely from its own knowledge (NVIDIA `meta/llama-3.1-8b-instruct`), and uses uploaded documents only as *optional* enrichment context — cited when relevant, never a hard requirement to answer
+    - Reason for pivot: strict retrieval-only grounding was causing frustrating false-negatives ("I don't have enough information" even when the answer existed in an uploaded doc) despite several tuning attempts (match count 5→8→12, threshold adjustments, prompt tweaks). A more serious hallucination bug was also found and fixed along the way (assistant fabricated a fake "leave policy" when conversation history existed but no document matched — fixed by making the retrieval-empty fallback unconditional in the old model; this whole issue became moot after the pivot to reasoning-first)
+    - Trade-off consciously accepted: answers are no longer guaranteed traceable to a source — this differs from the original core safety rule for this pharma-company internal tool. Documented explicitly for future reference.
+    - Planning docs rewritten to reflect this: `Project-Requirements.md`, `Architecture.md`, `Rules.md`, `Phases.md` all updated and pushed to GitHub
+    - Natural Hinglish tone fixed via system prompt (previously produced stiff, overly formal/textbook Hindi translations — now matches casual bilingual chat style)
+    - Retrieval performance: time-boxed to 4 seconds (never blocks the answer if slow), `max_tokens` reduced 1500→800 for faster typical replies
+    - Model history: `meta/llama-3.3-70b-instruct` tried first, abandoned (too slow/unreliable on NVIDIA free tier, timed out even at 55s) — settled on `meta/llama-3.1-8b-instruct`, fast and reliable
+  - **Multi-chat history (Claude-style):** new tables `conversations` and `messages` (both RLS-enabled), `Chat.jsx` rebuilt with sidebar (conversation list, "+ New Chat", click-to-switch, full persistence across page refresh). Fixed a field-name mismatch bug (DB `content` vs UI `text`) that caused loaded conversations to show empty bubbles / stuck "Thinking…"
+  - **Inline file upload in chat (Claude-style "+" button):** uploads go straight into the shared knowledge base via the existing `ingest` Edge Function. Fixed an auth bug (`user.access_token` doesn't exist — must use `session.access_token` from `supabase.auth.getSession()`)
+  - **Done when (met):** a logged-in IT/CSE staff member can ask any question — technical, coding, or about internal docs — and get a direct, useful answer, with persistent multi-chat history and easy in-chat document upload
+  - All of the above tested end-to-end and confirmed working by the user (2026-08-12): general reasoning, document-grounded answers with citations, follow-up memory, multi-chat switching, refresh-persistence, file upload, streaming, Hinglish tone, IT/CSE access gate intact
 
 ## Currently In Progress
 
-- **File/module:** None — recent pivot + multi-chat + inline upload all tested end-to-end and confirmed working by the user
-- **Status:** User has decided to hold off on further changes until the chatbot is live/deployed
+- **Phase status:** Phase 3 (Core Chat + Reasoning) is now fully complete and verified. Currently sitting between Phase 3 and Phase 4 — next planned phase is **Phase 4 (Fallback & Error Handling)**, specifically rate limiting on the chat endpoint, which is not yet implemented.
+- **File/module:** None active — no work in progress right now
+- **Status:** User has explicitly decided to hold off on further feature work until the chatbot is live/deployed
 - **Blockers:** None
 
 ## Open Decisions / Not Yet Finalized
 
 - Minimum password length mismatch (Supabase Auth setting at 6, app enforces 8) — not yet synced, low priority
 - No further feature work planned until after going live, per user's explicit decision (2026-08-12)
+- Rate limiting on `/chat` and `/ingest` endpoints — not yet implemented, planned for Phase 4
 
 ## Known Pitfalls (learned the hard way — avoid repeating)
 
@@ -70,14 +69,16 @@
 - Deleting a row from `profiles` does NOT delete the actual login account (`auth.users` is separate) — full account deletion requires deleting from `auth.users` too
 - Supabase free-tier email sending has a rate limit — heavy testing (multiple signups/resets) can silently fail to send confirmation/reset emails
 - Deleting+recreating a test auth account resets `profiles.department` back to default `'unassigned'` — must be manually re-set
-- **New:** When delegating file generation to Claude Code, always instruct it to write output into a separate new folder (not edit real files directly) and to output complete, unambiguous single-block prompts with exact code snippets — vague "fix this" instructions led to a subtle auth-token bug (`user.access_token` vs `session.access_token`) that took an extra debugging round to catch
-- **New:** When asking Claude Code for multiple file outputs at once via terminal print, files can get concatenated/mixed together, making it hard to tell where one ends and another begins — safer to have it write actual separate files to disk in a dedicated folder rather than printing everything to the terminal
+- When delegating file generation to Claude Code, always instruct it to write output into a separate new folder (not edit real files directly) and to output complete, unambiguous single-block prompts with exact code snippets — vague "fix this" instructions led to a subtle auth-token bug (`user.access_token` vs `session.access_token`) that took an extra debugging round to catch
+- When asking Claude Code for multiple file outputs at once via terminal print, files can get concatenated/mixed together, making it hard to tell where one ends and another begins — safer to have it write actual separate files to disk in a dedicated folder rather than printing everything to the terminal
+- Supabase free tier: project auto-pauses after 7 days of no activity (requires manual resume from dashboard) — worth monitoring once live
+- NVIDIA free tier: ~40 requests/minute rate limit — more than sufficient for a small IT/CSE team, but worth knowing if usage ever scales up
 
 ## Log (most recent first)
 
 | Date | What changed |
 |------|--------------|
-| 2026-08-12 | Major pivot completed & verified: general-reasoning assistant model (NVIDIA `llama-3.1-8b-instruct`) — answers freely from own knowledge, uses uploaded docs as optional cited context, no longer hard-gated on document match. Docs (Project-Requirements.md, Architecture.md, Rules.md, Phases.md) rewritten to reflect this. Natural Hinglish tone fixed via system prompt. Multi-chat history added: `conversations` + `messages` tables (RLS enabled), sidebar with conversation list, new-chat/switch-chat, full persistence across page refresh. Inline "+" file-attach added to chat input — uploads go straight to shared knowledge base via existing `ingest` function (fixed an auth-token bug where wrong token source caused "Not authenticated" failures). Response speed improved: retrieval time-boxed to 4s (never blocks answer), max_tokens reduced 1500→800 for faster typical replies. All changes tested end-to-end by user and confirmed working: general reasoning, document-grounded answers with citations, follow-up memory, multi-chat switching, refresh-persistence, file upload, streaming, Hinglish tone, IT/CSE access gate intact. User has decided to pause further feature work until the chatbot goes live. |
+| 2026-08-12 | Phase 3 (Core Chat + Reasoning) marked fully complete: general-reasoning assistant model (NVIDIA `llama-3.1-8b-instruct`) — answers freely from own knowledge, uses uploaded docs as optional cited context, no longer hard-gated on document match. Docs (Project-Requirements.md, Architecture.md, Rules.md, Phases.md) rewritten and pushed to GitHub. Natural Hinglish tone fixed via system prompt. Multi-chat history added: `conversations` + `messages` tables (RLS enabled), sidebar with conversation list, new-chat/switch-chat, full persistence across page refresh. Inline "+" file-attach added to chat input — uploads go straight to shared knowledge base via existing `ingest` function (fixed an auth-token bug where wrong token source caused "Not authenticated" failures). Response speed improved: retrieval time-boxed to 4s (never blocks answer), max_tokens reduced 1500→800 for faster typical replies. All changes tested end-to-end by user and confirmed working. User has decided to pause further feature work until the chatbot goes live — next phase is Phase 4 (rate limiting). |
 | 2026-08-08 | Phase 3 (Core Chat + Retrieval, original RAG-only version) completed and initially verified: vector search (`match_documents` SQL function), `chat` Edge Function, streaming responses, conversation memory (pre-multi-chat, single-thread version). A hallucination bug was found (fake "leave policy" fabricated when no document matched but conversation history existed) and fixed by forcing the empty-match fallback unconditionally — this whole issue later became moot after the reasoning-model pivot above. |
 | 2026-08-04 | Security hardening completed: input validation, server-side sanitization, login-attempt lockout, generic error messages, email-based password reset flow — all verified working. Phase 2 (Document Ingestion) completed and verified: text + PDF upload, chunking, embedding, vector storage, admin-only restriction (later loosened to all IT/CSE members). |
 | 2026-07-29 | Phase 1 (Login) completed and verified end-to-end: signup, login, session persistence, logout all working via Supabase Auth. |
