@@ -1,37 +1,35 @@
 # Project Requirements Document
-**Project:** Internal Knowledge Chatbot — Venus Remedies
-**Type:** RAG-based internal assistant
+**Project:** IT/CSE Knowledge Assistant — Venus Remedies
+**Type:** General-purpose reasoning assistant (with optional document context)
 
 ---
 
 ## 1. What to Build
 
-A retrieval-augmented (RAG) chatbot that lets employees ask natural-language questions and get answers sourced from internal company documents — HR policies, IT guides, company FAQs, and general knowledge-base content.
+An internal AI assistant for the IT/CSE department — a direct-reasoning chat tool, similar in spirit to Claude/ChatGPT, that can answer technical questions, explain concepts, help write and debug code, and reason through problems on request.
 
-The bot retrieves relevant document chunks from an internal knowledge base, feeds them to an LLM alongside the user's question, and returns a grounded answer with a reference to the source document (so answers are traceable, not hallucinated).
+If relevant internal documents have been uploaded (runbooks, SOPs, notes), the assistant will use them as additional context and cite them when it does. But it is **not limited to only answering from uploaded documents** — it can reason and answer from its own general knowledge as well.
 
-**Not in scope for v1:**
-- Batch/QA data, SOP compliance clauses, regulatory documents (these carry higher accuracy/audit stakes — separate future project, see Idea #1/#2)
-- Vendor email handling
-- Any write-actions (the bot only answers questions, it does not modify records or send emails)
+**Not in scope:**
+- Any write-actions (the assistant only answers, it does not modify records, send emails, or take actions)
+- Company-wide rollout (still scoped to IT/CSE department only)
 
 ## 2. Targeted Users
 
-- **Primary:** All employees who currently ping IT/HR for repetitive questions (leave policy, VPN setup, expense process, holiday calendar, etc.)
-- **Secondary:** New hires during onboarding, who need fast access to "how do I..." answers without waiting on a person
-- **Not targeted (v1):** QA/regulatory staff needing SOP or audit-clause lookups — that requires stricter accuracy guarantees and is a separate future phase
+- **IT/CSE department staff only** — access-gated by department, same as before
+- Not targeted: any other department (HR, Finance, QA/regulatory, etc.)
 
-## 3. Core Features (v1)
+## 3. Core Features
 
-1. **Chat interface** — simple, single-page chat window; ask a question, get an answer
-2. **Source citation** — every answer references which internal document(s) it pulled from
-3. **Login/access control** — only logged-in employees can use it (basic auth to start, company SSO later)
-4. **Document ingestion pipeline** — admin can upload/update source documents (policies, FAQs, guides) that feed the knowledge base
-5. **"I don't know" fallback** — if the bot has no relevant source to answer confidently, it says so instead of guessing
-6. **Conversation history** — user can see their own past questions in the current session (not necessarily persisted long-term in v1)
+1. **Chat interface** — single-page chat window, ask anything, get a direct answer
+2. **General reasoning** — the assistant can answer technical/coding/IT questions using its own knowledge, not just uploaded content
+3. **Optional document context** — if the team has uploaded relevant internal docs, the assistant references and cites them; if not, it still answers using general knowledge
+4. **Login/access control** — IT/CSE department only (unchanged)
+5. **Document upload (optional, not required to use chat)** — team members can still add internal docs to give the assistant extra context on internal-specific things (like internal tool names, internal processes)
+6. **Conversation history** — within a session, follow-up questions are understood in context
 
-## 4. Success Criteria (how we know v1 worked)
+## 4. Success Criteria
 
-- A new hire can get accurate answers to at least 80% of common onboarding questions without contacting IT/HR
-- Every answer shows a source; zero answers presented as fact without a citable source
-- Demo-ready: leadership can see a working query → grounded answer → source, live
+- IT/CSE staff can ask any technical question — whether or not a document exists for it — and get a useful, direct answer
+- When an uploaded document is relevant, it's cited; when it isn't, the assistant still helps using its own knowledge
+- Demo-ready: staff can see it functioning like a knowledgeable teammate, not just a document search tool
