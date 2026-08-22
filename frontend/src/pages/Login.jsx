@@ -157,13 +157,13 @@ export default function Login() {
           <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: COLORS.text }}>
             Knowledge Assistant
           </h1>
-          <p style={{ margin: '6px 0 0', fontSize: 13, color: COLORS.muted }}>
+          <p style={{ margin: '6px 0 0', fontSize: 11, color: COLORS.muted, lineHeight: 1.5 }}>
             {titleText}
           </p>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <label style={{ display: 'block', fontSize: 12, color: COLORS.muted, marginBottom: 4 }}>
+          <label style={{ display: 'block', fontSize: 11, color: COLORS.muted, marginBottom: 4 }}>
             Email
           </label>
           <input
@@ -178,7 +178,7 @@ export default function Login() {
 
           {mode !== 'forgot' && (
             <>
-              <label style={{ display: 'block', fontSize: 12, color: COLORS.muted, margin: '14px 0 4px' }}>
+              <label style={{ display: 'block', fontSize: 11, color: COLORS.muted, margin: '14px 0 4px' }}>
                 Password
               </label>
               <div style={{ position: 'relative' }}>
@@ -253,7 +253,7 @@ export default function Login() {
           </button>
         </form>
 
-        <div style={{ marginTop: 18, textAlign: 'center', fontSize: 12.5, color: COLORS.muted }}>
+        <div style={{ marginTop: 18, textAlign: 'center', fontSize: 11, color: COLORS.muted, lineHeight: 1.5 }}>
           {mode === 'signin' && (
             <>
               New here?{' '}
@@ -302,7 +302,7 @@ const linkButtonStyle = {
   padding: 0,
   color: '#0F6E7D',
   fontWeight: 600,
-  fontSize: 12.5,
+  fontSize: 11,
   cursor: 'pointer',
   textDecoration: 'underline',
 };

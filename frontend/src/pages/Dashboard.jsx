@@ -9,6 +9,7 @@ const COLORS = {
   bg: '#F7F8FA',
   surface: '#FFFFFF',
   text: '#1A1F24',
+  heading: '#0F2A2E',
   muted: '#6B7280',
   warning: '#D97706',
   success: '#2E8B57',
@@ -425,6 +426,7 @@ export default function Dashboard() {
                       background: COLORS.surface,
                       color: COLORS.warning,
                       fontSize: 12,
+                      fontWeight: 500,
                       cursor: 'pointer',
                     }}
                   >
@@ -439,6 +441,7 @@ export default function Dashboard() {
                       background: COLORS.surface,
                       color: COLORS.success,
                       fontSize: 12,
+                      fontWeight: 500,
                       cursor: 'pointer',
                     }}
                   >
@@ -453,6 +456,7 @@ export default function Dashboard() {
                       background: COLORS.surface,
                       color: COLORS.warning,
                       fontSize: 12,
+                      fontWeight: 500,
                       cursor: 'pointer',
                     }}
                   >
@@ -461,7 +465,7 @@ export default function Dashboard() {
                 </>
               ) : (
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <span style={{ fontSize: 13, color: COLORS.text }}>
+                  <span style={{ fontSize: 13, color: COLORS.text, lineHeight: 1.5 }}>
                     {bulkActionConfirm.action === 'delete'
                       ? `Delete ${selectedUserIds.size} user${selectedUserIds.size > 1 ? 's' : ''}? This cannot be undone.`
                       : bulkActionConfirm.action === 'suspend'
@@ -486,6 +490,7 @@ export default function Dashboard() {
                       background: bulkActionConfirm.action === 'delete' || bulkActionConfirm.action === 'suspend' ? COLORS.warning : COLORS.success,
                       color: '#fff',
                       fontSize: 12,
+                      fontWeight: 500,
                       cursor: 'pointer',
                     }}
                   >
@@ -500,6 +505,7 @@ export default function Dashboard() {
                       background: COLORS.surface,
                       color: COLORS.text,
                       fontSize: 12,
+                      fontWeight: 500,
                       cursor: 'pointer',
                     }}
                   >
@@ -516,7 +522,7 @@ export default function Dashboard() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: `2px solid ${COLORS.border}` }}>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 13, fontWeight: 600, color: COLORS.text }}>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>
                   <input
                     type="checkbox"
                     checked={selectedUserIds.size === users.length && users.length > 0}
@@ -531,14 +537,14 @@ export default function Dashboard() {
                     style={{ marginRight: '8px' }}
                   />
                 </th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 13, fontWeight: 600, color: COLORS.text }}>Email</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 13, fontWeight: 600, color: COLORS.text }}>Full Name</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 13, fontWeight: 600, color: COLORS.text }}>Role</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 13, fontWeight: 600, color: COLORS.text }}>Department</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 13, fontWeight: 600, color: COLORS.text }}>Suspended</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 13, fontWeight: 600, color: COLORS.text }}>Created</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 13, fontWeight: 600, color: COLORS.text }}>Last Sign In</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 13, fontWeight: 600, color: COLORS.text }}>Actions</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Email</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Full Name</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Role</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Department</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Suspended</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Created</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Last Sign In</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -575,6 +581,7 @@ export default function Dashboard() {
                           border: `1px solid ${COLORS.border}`,
                           borderRadius: 4,
                           fontSize: 12,
+                          fontWeight: 500,
                           background: COLORS.bg,
                         }}
                       >
@@ -591,6 +598,7 @@ export default function Dashboard() {
                           border: `1px solid ${COLORS.border}`,
                           borderRadius: 4,
                           fontSize: 12,
+                          fontWeight: 500,
                           background: COLORS.bg,
                         }}
                       >
@@ -624,6 +632,7 @@ export default function Dashboard() {
                             background: COLORS.surface,
                             color: COLORS.warning,
                             fontSize: 12,
+                            fontWeight: 500,
                             cursor: 'pointer',
                           }}
                         >
@@ -643,6 +652,7 @@ export default function Dashboard() {
                               background: COLORS.warning,
                               color: '#fff',
                               fontSize: 12,
+                              fontWeight: 500,
                               cursor: 'pointer',
                             }}
                           >
@@ -657,6 +667,7 @@ export default function Dashboard() {
                               background: COLORS.surface,
                               color: COLORS.text,
                               fontSize: 12,
+                              fontWeight: 500,
                               cursor: 'pointer',
                             }}
                           >
@@ -692,12 +703,12 @@ export default function Dashboard() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: `2px solid ${COLORS.border}` }}>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 13, fontWeight: 600, color: COLORS.text }}>Title</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 13, fontWeight: 600, color: COLORS.text }}>Uploaded by</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 13, fontWeight: 600, color: COLORS.text }}>Chunks</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 13, fontWeight: 600, color: COLORS.text }}>Size</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 13, fontWeight: 600, color: COLORS.text }}>First uploaded</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 13, fontWeight: 600, color: COLORS.text }}>Actions</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Title</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Uploaded by</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Chunks</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Size</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>First uploaded</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -729,6 +740,7 @@ export default function Dashboard() {
                           background: COLORS.surface,
                           color: COLORS.warning,
                           fontSize: 12,
+                          fontWeight: 500,
                           cursor: 'pointer',
                         }}
                       >
@@ -748,6 +760,7 @@ export default function Dashboard() {
                             background: COLORS.warning,
                             color: '#fff',
                             fontSize: 12,
+                            fontWeight: 500,
                             cursor: 'pointer',
                           }}
                         >
@@ -762,6 +775,7 @@ export default function Dashboard() {
                             background: COLORS.surface,
                             color: COLORS.text,
                             fontSize: 12,
+                            fontWeight: 500,
                             cursor: 'pointer',
                           }}
                         >
@@ -830,7 +844,7 @@ export default function Dashboard() {
               <div style={{ fontSize: 13, color: COLORS.text, marginBottom: '4px' }}>
                 <strong>{resolveUploaderEmail(event.user_id) || 'System'}</strong> performed this action
               </div>
-              <div style={{ fontSize: 12, color: COLORS.muted, wordBreak: 'break-all' }}>
+              <div style={{ fontSize: 12, fontWeight: 500, color: COLORS.muted, wordBreak: 'break-all', lineHeight: 1.5 }}>
                 {event.detail ? JSON.stringify(event.detail, null, 2).slice(0, 200) + (JSON.stringify(event.detail).length > 200 ? '...' : '') : 'No details'}
               </div>
             </div>
@@ -899,23 +913,23 @@ export default function Dashboard() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         padding: '14px 24px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`,
       }}>
-        <div style={{ fontWeight: 700, fontSize: 15, color: '#0F2A2E' }}>
+        <div style={{ fontWeight: 700, fontSize: 15, color: COLORS.heading }}>
           Knowledge Assistant
         </div>
         <Link
           to="/"
-          style={{ fontSize: 12.5, color: COLORS.primary, fontWeight: 600, textDecoration: 'none' }}
+          style={{ fontSize: 14, color: COLORS.primary, fontWeight: 600, textDecoration: 'none' }}
         >
           ← Back to Home
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <span style={{ fontSize: 13, color: '#6B7280' }}>{user?.email}</span>
+          <span style={{ fontSize: 13, color: COLORS.muted }}>{user?.email}</span>
           {/* FIX 3: Change onClick to call signOut() */}
           <button
             onClick={() => signOut()}
             style={{
-              padding: '7px 14px', borderRadius: 7, border: '1px solid #E3EEEF',
-              background: '#F7F8FA', color: '#1A1F24', fontSize: 12.5, fontWeight: 600,
+              padding: '7px 14px', borderRadius: 7, border: `1px solid ${COLORS.border}`,
+              background: COLORS.bg, color: COLORS.text, fontSize: 14, fontWeight: 600,
               cursor: 'pointer',
             }}
           >
