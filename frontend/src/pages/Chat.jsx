@@ -72,11 +72,12 @@ export default function Chat() {
   const [activeProjectFilter, setActiveProjectFilter] = useState(null); // Currently selected project filter (null = show all)
   const [fileButtonHover, setFileButtonHover] = useState(false); // For file attachment button hover
   const [micButtonHover, setMicButtonHover] = useState(false); // For microphone button hover
-
   const [openMenuId, setOpenMenuId] = useState(null); // For three-dot menu
   const [moveSubmenuId, setMoveSubmenuId] = useState(null); // For move to project submenu
   const [submenuPosition, setSubmenuPosition] = useState({ top: 0, left: 0 }); // For submenu positioning
-  const [viewportWidth, setViewportWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024); // For responsive layout
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null); // FIX 2: For conversation deletion confirmation
+  const [hoveredMenuItem, setHoveredMenuItem] = useState(null); // FIX 3: For dropdown menu item hover
+  const [viewportWidth, setViewportWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   const bottomRef = useRef(null);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
@@ -110,13 +111,14 @@ export default function Chat() {
         if (isOutsideMenu && isOutsideSubmenu) {
           setOpenMenuId(null);
           setMoveSubmenuId(null);
+          setConfirmDeleteId(null); // FIX 2: Also reset deletion confirmation when clicking outside
         }
       };
 
       document.addEventListener('click', handleClickOutside);
       return () => document.removeEventListener('click', handleClickOutside);
     }
-  }, [openMenuId, moveSubmenuId]);
+  }, [openMenuId, moveSubmenuId, confirmDeleteId]);
 
   useEffect(() => {
     loadProjects();
@@ -172,11 +174,7 @@ export default function Chat() {
         setProjects([]);
         return;
       }
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('projects').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
       if (error) throw error;
       setProjects(data);
     } catch (err) {
@@ -192,11 +190,7 @@ export default function Chat() {
         setConversations([]);
         return;
       }
-      let query = supabase
-        .from('conversations')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false });
+      let query = supabase.from('conversations').select('*').eq('user_id', user.id).order('updated_at', { ascending: false });
 
       if (projectId !== null) {
         query = query.eq('project_id', projectId);
@@ -221,11 +215,7 @@ export default function Chat() {
   const loadConversationMessages = async (conversationId) => {
     setLoadingMessages(true);
     try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true });
+      const { data, error } = await supabase.from('messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true });
       if (error) throw error;
       // Transform database rows to match component's expected shape
       const transformedMessages = data.map(msg => ({
@@ -386,6 +376,15 @@ export default function Chat() {
         }
       ]);
 
+      // FIX 1: Also add an assistant message for conversation history
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: `I've added "${file.name}" to the knowledge base (${data.chunksStored} chunk(s)). You can ask me anything about its contents and I'll search it.`
+        }
+      ]);
+
       setUploadSuccess(data);
     } catch (err) {
       console.error('Upload error:', err);
@@ -433,12 +432,9 @@ export default function Chat() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('No user');
         const title = question.length > 40 ? question.slice(0, 40) + '...' : question;
-        const { data, error } = await supabase
-          .from('conversations')
-          .insert([
+        const { data, error } = await supabase.from('conversations').insert([
             { user_id: user.id, title },
-          ])
-          .select();
+          ]).select();
         if (error) throw error;
         conversationId = data[0].id;
         setActiveConversationId(conversationId);
@@ -472,10 +468,7 @@ export default function Chat() {
         }
       ]);
       // Update conversation's updated_at
-      await supabase
-        .from('conversations')
-        .update({ updated_at: new Date() })
-        .eq('id', conversationId);
+      await supabase.from('conversations').update({ updated_at: new Date() }).eq('id', conversationId);
     } catch (err) {
       console.error('Error saving user message:', err);
       // We'll still proceed with the chat, but note that persistence might fail
@@ -532,7 +525,7 @@ export default function Chat() {
               for (const line of lines) {
                 if (!line.trim()) continue;
                 let evt;
-                try { evt = JSON.parse(line); } catch { continue; }
+                try{ evt = JSON.parse(line); } catch { continue; }
 
                 if (evt.type === 'sources') {
                   sources = evt.sources;
@@ -576,10 +569,7 @@ export default function Chat() {
             }
           ]);
           // Update conversation's updated_at
-          await supabase
-            .from('conversations')
-            .update({ updated_at: new Date() })
-            .eq('id', conversationId);
+          await supabase.from('conversations').update({ updated_at: new Date() }).eq('id', conversationId);
           // Refresh conversations list to update ordering
           loadConversations();
         } catch (err) {
@@ -702,12 +692,8 @@ export default function Chat() {
     }
   };
 
-  // Delete conversation handler
+  // Delete conversation handler - FIX 2: Removed window.confirm
   const handleDeleteConversation = async (convId) => {
-    if (!window.confirm('Delete this conversation? This cannot be undone.')) {
-      return;
-    }
-
     try {
       await supabase.from('conversations').delete().eq('id', convId);
 
@@ -733,10 +719,7 @@ export default function Chat() {
   // Move conversation to project handler
   const handleMoveConversationToProject = async (convId, projectId) => {
     try {
-      await supabase
-        .from('conversations')
-        .update({ project_id: projectId })
-        .eq('id', convId);
+      await supabase.from('conversations').update({ project_id: projectId }).eq('id', convId);
 
       // Update local state
       setConversations(prev =>
@@ -1012,6 +995,8 @@ export default function Chat() {
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
+                      // FIX 2 & 3: Reset confirmation state when opening a different menu
+                      setConfirmDeleteId(null);
                       setOpenMenuId(openMenuId === conv.id ? null : conv.id);
                     }}
                     >
@@ -1039,24 +1024,34 @@ export default function Chat() {
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteConversation(conv.id);
-                            setOpenMenuId(null);
+                            // FIX 2: Two-step confirmation
+                            if (confirmDeleteId === conv.id) {
+                              // Second click - actually delete
+                              handleDeleteConversation(conv.id);
+                              setOpenMenuId(null);
+                              setConfirmDeleteId(null);
+                            } else {
+                              // First click - show confirmation
+                              setConfirmDeleteId(conv.id);
+                            }
                           }}
                           onMouseEnter={() => {
-                            // Hover effect for delete option
+                            // FIX 3: Set hover state for delete option
+                            setHoveredMenuItem(`delete-${conv.id}`);
                           }}
                           onMouseLeave={() => {
-                            // Hover effect for delete option
+                            // FIX 3: Clear hover state
+                            setHoveredMenuItem(null);
                           }}
                           style={{
                             padding: '8px 12px',
                             color: COLORS.warning,
                             fontSize: '12px',
                             cursor: 'pointer',
-                            background: 'transparent',
+                            background: hoveredMenuItem === `delete-${conv.id}` ? '#FEF3E7' : 'transparent',
                           }}
                         >
-                          Delete
+                          {confirmDeleteId === conv.id ? 'Confirm delete?' : 'Delete'}
                         </div>
 
                         {/* Move to project option */}
@@ -1072,17 +1067,19 @@ export default function Chat() {
                             }
                           }}
                           onMouseEnter={() => {
-                            // Hover effect for move option
+                            // FIX 3: Set hover state for move option
+                            setHoveredMenuItem(`move-${conv.id}`);
                           }}
                           onMouseLeave={() => {
-                            // Hover effect for move option
+                            // FIX 3: Clear hover state
+                            setHoveredMenuItem(null);
                           }}
                           style={{
                             padding: '8px 12px',
                             color: COLORS.primary,
                             fontSize: '12px',
                             cursor: 'pointer',
-                            background: 'transparent',
+                            background: hoveredMenuItem === `move-${conv.id}` ? '#EAF3F4' : 'transparent',
                           }}
                         >
                           Move to project
@@ -1115,17 +1112,19 @@ export default function Chat() {
                                   setMoveSubmenuId(null);
                                 }}
                                 onMouseEnter={() => {
-                                  // Hover effect for remove option
+                                  // FIX 3: Set hover state for remove option
+                                  setHoveredMenuItem(`remove-${conv.id}`);
                                 }}
                                 onMouseLeave={() => {
-                                  // Hover effect for remove option
+                                  // FIX 3: Clear hover state
+                                  setHoveredMenuItem(null);
                                 }}
                                 style={{
                                   padding: '8px 12px',
                                   color: COLORS.warning,
                                   fontSize: '12px',
                                   cursor: 'pointer',
-                                  background: 'transparent',
+                                  background: hoveredMenuItem === `remove-${conv.id}` ? '#FEF3E7' : 'transparent',
                                 }}
                               >
                                 Remove from project
@@ -1143,17 +1142,19 @@ export default function Chat() {
                                   setMoveSubmenuId(null);
                                 }}
                                 onMouseEnter={() => {
-                                  // Hover effect for project option
+                                  // FIX 3: Set hover state for project option
+                                  setHoveredMenuItem(`project-${conv.id}-${project.id}`);
                                 }}
                                 onMouseLeave={() => {
-                                  // Hover effect for project option
+                                  // FIX 3: Clear hover state
+                                  setHoveredMenuItem(null);
                                 }}
                                 style={{
                                   padding: '8px 12px',
                                   color: project.id === conv.project_id ? COLORS.muted : COLORS.primary,
                                   fontSize: '12px',
                                   cursor: 'pointer',
-                                  background: 'transparent',
+                                  background: hoveredMenuItem === `project-${conv.id}-${project.id}` ? '#EAF3F4' : 'transparent',
                                 }}
                               >
                                 {project.name}
