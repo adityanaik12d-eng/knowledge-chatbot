@@ -783,6 +783,7 @@ export default function Chat() {
       display: 'flex',
       height: '100vh',
       overflow: 'hidden',
+      maxWidth: '100vw',
     }}>
       {/* Sidebar */}
       <div style={{
@@ -790,6 +791,7 @@ export default function Chat() {
         background: A.surface,
         borderRight: viewportWidth >= 1024 ? `1px solid ${A.border}` : 'none',
         overflowY: 'auto',
+        overflowX: 'hidden',
         transition: 'width 0.2s ease',
         display: 'flex',
         flexDirection: 'column',
@@ -1214,10 +1216,13 @@ export default function Chat() {
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
+        minWidth: 0,
+        overflow: 'hidden',
       }}>
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: '14px 24px', background: A.surface, borderBottom: `1px solid ${A.border}`,
+          minWidth: 0,
         }}>
           <div style={{ fontWeight: 700, fontSize: viewportWidth < 640 ? 13 : 15, color: A.brand }}>
             Knowledge Assistant
@@ -1452,6 +1457,7 @@ export default function Chat() {
                 style={{
                   flex: 1,
                   minWidth: 0,
+                  maxWidth: '100%',
                   minHeight: '2.5rem',
                   maxHeight: '200px',
                   padding: '14px 16px',
@@ -1462,8 +1468,10 @@ export default function Chat() {
                   resize: 'none',
                   outline: 'none',
                   overflowY: 'hidden',
+                  overflowX: 'hidden',
                   background: A.surface,
                   color: A.text,
+                  boxSizing: 'border-box',
                 }}
               />
             </div>
