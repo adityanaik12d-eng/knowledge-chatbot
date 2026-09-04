@@ -54,11 +54,7 @@ const MAX_FILE_SIZE_MB = 8;
 
 const Markdown = React.memo(function Markdown({ children, activeColor }) {
   return (
-<<<<<<< HEAD
     <div style={{ fontSize: 14, lineHeight: 1.6, color: activeColor.text, overflowWrap: 'break-word', wordBreak: 'break-word' }}>
-=======
-    <div style={{ fontSize: 14, lineHeight: 1.6, color: activeColor.text }}>
->>>>>>> 398268fba96d946e517dc932368ba600e1a26e4f
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -1262,10 +1258,7 @@ export default function Chat() {
             flexDirection: 'column',
             gap: 16,
             overflowY: 'auto',
-<<<<<<< HEAD
             overflowX: 'hidden',
-=======
->>>>>>> 398268fba96d946e517dc932368ba600e1a26e4f
           }}
         >
           {messages.length === 0 && activeConversationId === null && (
@@ -1319,10 +1312,7 @@ export default function Chat() {
                     maxWidth: viewportWidth < 640 ? '90%' : viewportWidth < 1024 ? '85%' : '75%',
                     background: A.primary, color: '#fff',
                     padding: '10px 14px', borderRadius: '14px 14px 2px 14px', fontSize: viewportWidth < 640 ? 12 : 14, lineHeight: 1.5,
-<<<<<<< HEAD
                     overflowWrap: 'break-word', wordBreak: 'break-word',
-=======
->>>>>>> 398268fba96d946e517dc932368ba600e1a26e4f
                   }}>
                     {m.text}
                   </div>
@@ -1347,10 +1337,7 @@ export default function Chat() {
                             <span key={si} style={{
                               fontSize: viewportWidth < 640 ? 9 : 11, padding: '3px 8px', borderRadius: 12,
                               background: A.sourceBg, color: A.primary, fontWeight: 600,
-<<<<<<< HEAD
-                              overflowWrap: 'break-word', wordBreak: 'break-word', maxWidth: '100%',
-=======
->>>>>>> 398268fba96d946e517dc932368ba600e1a26e4f
+                    overflowWrap: 'break-word', wordBreak: 'break-word',
                             }}>
                               {s.title} · {s.similarity}%
                             </span>
@@ -1365,10 +1352,7 @@ export default function Chat() {
                     maxWidth: viewportWidth < 640 ? '90%' : viewportWidth < 1024 ? '85%' : '85%',
                     background: A.warningBg, border: `1px solid ${A.warningBorder}`,
                     padding: '10px 14px', borderRadius: 10, fontSize: viewportWidth < 640 ? 11 : 13, color: A.warning,
-<<<<<<< HEAD
                     overflowWrap: 'break-word', wordBreak: 'break-word',
-=======
->>>>>>> 398268fba96d946e517dc932368ba600e1a26e4f
                   }}>
                     {m.text}
                   </div>
