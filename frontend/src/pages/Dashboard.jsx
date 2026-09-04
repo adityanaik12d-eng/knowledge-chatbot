@@ -1,24 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useTheme } from '../context/ThemeContext.jsx';
+import { LIGHT_COLORS, DARK_COLORS } from '../context/themeColors.js';
 import { supabase } from '../lib/supabase.js';
-
-// Copy COLORS from Chat.jsx to maintain consistency
-const COLORS = {
-  primary: '#0F6E7D',
-  bg: '#F7F8FA',
-  surface: '#FFFFFF',
-  text: '#1A1F24',
-  heading: '#0F2A2E',
-  muted: '#6B7280',
-  warning: '#D97706',
-  success: '#2E8B57',
-  border: '#E3EEEF',
-};
 
 export default function Dashboard() {
   const { user, isAdmin, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  const A = theme === 'dark' ? DARK_COLORS : LIGHT_COLORS;
   const [viewportWidth, setViewportWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   const [activeTab, setActiveTab] = useState('Users'); // Users, Documents, Activity Log, Usage
   const [users, setUsers] = useState([]);
@@ -250,16 +241,16 @@ export default function Dashboard() {
     return (
       <div style={{ padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h2 style={{ margin: 0, fontSize: 20, color: COLORS.text }}>Users</h2>
+          <h2 style={{ margin: 0, fontSize: 20, color: A.text }}>Users</h2>
           {/* FIX 2: Change onClick to only set showAddUserForm to true */}
           <button
             onClick={() => setShowAddUserForm(true)}
             style={{
               padding: '8px 16px',
               borderRadius: 6,
-              border: `1px solid ${COLORS.border}`,
-              background: COLORS.surface,
-              color: COLORS.primary,
+              border: `1px solid ${A.border}`,
+              background: A.surface,
+              color: A.primary,
               fontSize: 13,
               fontWeight: 600,
               cursor: 'pointer',
@@ -272,11 +263,11 @@ export default function Dashboard() {
         {/* Add user form */}
         {/* FIX 2: Change condition to showAddUserForm */}
         {showAddUserForm ? (
-          <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '16px', marginBottom: '24px' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '12px', fontSize: 16, color: COLORS.text }}>Add new user</h3>
+          <div style={{ background: A.surface, border: `1px solid ${A.border}`, borderRadius: 8, padding: '16px', marginBottom: '24px' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '12px', fontSize: 16, color: A.text }}>Add new user</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '12px' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: 13, color: COLORS.text }}>Email *</label>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: 13, color: A.text }}>Email *</label>
                 <input
                   type="email"
                   value={addUserForm.email}
@@ -285,16 +276,16 @@ export default function Dashboard() {
                   style={{
                     width: '100%',
                     padding: '8px 12px',
-                    border: `1px solid ${COLORS.border}`,
+                    border: `1px solid ${A.border}`,
                     borderRadius: 6,
                     fontSize: 13,
-                    background: COLORS.bg,
+                    background: A.bg,
                   }}
                   required
                 />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: 13, color: COLORS.text }}>Password *</label>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: 13, color: A.text }}>Password *</label>
                 <input
                   type="password"
                   value={addUserForm.password}
@@ -303,16 +294,16 @@ export default function Dashboard() {
                   style={{
                     width: '100%',
                     padding: '8px 12px',
-                    border: `1px solid ${COLORS.border}`,
+                    border: `1px solid ${A.border}`,
                     borderRadius: 6,
                     fontSize: 13,
-                    background: COLORS.bg,
+                    background: A.bg,
                   }}
                   required
                 />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: 13, color: COLORS.text }}>Full name</label>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: 13, color: A.text }}>Full name</label>
                 <input
                   type="text"
                   value={addUserForm.fullName}
@@ -321,25 +312,25 @@ export default function Dashboard() {
                   style={{
                     width: '100%',
                     padding: '8px 12px',
-                    border: `1px solid ${COLORS.border}`,
+                    border: `1px solid ${A.border}`,
                     borderRadius: 6,
                     fontSize: 13,
-                    background: COLORS.bg,
+                    background: A.bg,
                   }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: 13, color: COLORS.text }}>Role</label>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: 13, color: A.text }}>Role</label>
                 <select
                   value={addUserForm.role}
                   onChange={(e) => setAddUserForm(prev => ({ ...prev, role: e.target.value }))}
                   style={{
                     width: '100%',
                     padding: '8px 12px',
-                    border: `1px solid ${COLORS.border}`,
+                    border: `1px solid ${A.border}`,
                     borderRadius: 6,
                     fontSize: 13,
-                    background: COLORS.bg,
+                    background: A.bg,
                   }}
                 >
                   <option value="employee">Employee</option>
@@ -347,17 +338,17 @@ export default function Dashboard() {
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: 13, color: COLORS.text }}>Department</label>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: 13, color: A.text }}>Department</label>
                 <select
                   value={addUserForm.department}
                   onChange={(e) => setAddUserForm(prev => ({ ...prev, department: e.target.value }))}
                   style={{
                     width: '100%',
                     padding: '8px 12px',
-                    border: `1px solid ${COLORS.border}`,
+                    border: `1px solid ${A.border}`,
                     borderRadius: 6,
                     fontSize: 13,
-                    background: COLORS.bg,
+                    background: A.bg,
                   }}
                 >
                   <option value="unassigned">Unassigned</option>
@@ -375,7 +366,7 @@ export default function Dashboard() {
                   padding: '8px 16px',
                   borderRadius: 6,
                   border: 'none',
-                  background: !addUserForm.email || !addUserForm.password ? '#7FA9AF' : COLORS.primary,
+                  background: !addUserForm.email || !addUserForm.password ? A.disabled : A.primary,
                   color: '#fff',
                   fontSize: 13,
                   fontWeight: 600,
@@ -394,9 +385,9 @@ export default function Dashboard() {
                   marginLeft: '8px',
                   padding: '8px 16px',
                   borderRadius: 6,
-                  border: `1px solid ${COLORS.border}`,
-                  background: COLORS.surface,
-                  color: COLORS.text,
+                  border: `1px solid ${A.border}`,
+                  background: A.surface,
+                  color: A.text,
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -410,9 +401,9 @@ export default function Dashboard() {
 
         {/* Bulk actions bar */}
         {selectedUserIds.size > 0 ? (
-          <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '12px', marginBottom: '16px' }}>
+          <div style={{ background: A.surface, border: `1px solid ${A.border}`, borderRadius: 8, padding: '12px', marginBottom: '16px' }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, color: COLORS.text }}>
+              <span style={{ fontSize: 13, color: A.text }}>
                 {selectedUserIds.size} user{selectedUserIds.size > 1 ? 's' : ''} selected
               </span>
               {!bulkActionConfirm ? (
@@ -422,9 +413,9 @@ export default function Dashboard() {
                     style={{
                       padding: '6px 12px',
                       borderRadius: 4,
-                      border: `1px solid ${COLORS.warning}`,
-                      background: COLORS.surface,
-                      color: COLORS.warning,
+                      border: `1px solid ${A.warning}`,
+                      background: A.surface,
+                      color: A.warning,
                       fontSize: 12,
                       fontWeight: 500,
                       cursor: 'pointer',
@@ -437,9 +428,9 @@ export default function Dashboard() {
                     style={{
                       padding: '6px 12px',
                       borderRadius: 4,
-                      border: `1px solid ${COLORS.success}`,
-                      background: COLORS.surface,
-                      color: COLORS.success,
+                      border: `1px solid ${A.success}`,
+                      background: A.surface,
+                      color: A.success,
                       fontSize: 12,
                       fontWeight: 500,
                       cursor: 'pointer',
@@ -452,9 +443,9 @@ export default function Dashboard() {
                     style={{
                       padding: '6px 12px',
                       borderRadius: 4,
-                      border: `1px solid ${COLORS.warning}`,
-                      background: COLORS.surface,
-                      color: COLORS.warning,
+                      border: `1px solid ${A.warning}`,
+                      background: A.surface,
+                      color: A.warning,
                       fontSize: 12,
                       fontWeight: 500,
                       cursor: 'pointer',
@@ -465,7 +456,7 @@ export default function Dashboard() {
                 </>
               ) : (
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <span style={{ fontSize: 13, color: COLORS.text, lineHeight: 1.5 }}>
+                  <span style={{ fontSize: 13, color: A.text, lineHeight: 1.5 }}>
                     {bulkActionConfirm.action === 'delete'
                       ? `Delete ${selectedUserIds.size} user${selectedUserIds.size > 1 ? 's' : ''}? This cannot be undone.`
                       : bulkActionConfirm.action === 'suspend'
@@ -486,8 +477,8 @@ export default function Dashboard() {
                     style={{
                       padding: '6px 12px',
                       borderRadius: 4,
-                      border: `1px solid ${bulkActionConfirm.action === 'delete' || bulkActionConfirm.action === 'suspend' ? COLORS.warning : COLORS.success}`,
-                      background: bulkActionConfirm.action === 'delete' || bulkActionConfirm.action === 'suspend' ? COLORS.warning : COLORS.success,
+                      border: `1px solid ${bulkActionConfirm.action === 'delete' || bulkActionConfirm.action === 'suspend' ? A.warning : A.success}`,
+                      background: bulkActionConfirm.action === 'delete' || bulkActionConfirm.action === 'suspend' ? A.warning : A.success,
                       color: '#fff',
                       fontSize: 12,
                       fontWeight: 500,
@@ -501,9 +492,9 @@ export default function Dashboard() {
                     style={{
                       padding: '6px 12px',
                       borderRadius: 4,
-                      border: `1px solid ${COLORS.border}`,
-                      background: COLORS.surface,
-                      color: COLORS.text,
+                      border: `1px solid ${A.border}`,
+                      background: A.surface,
+                      color: A.text,
                       fontSize: 12,
                       fontWeight: 500,
                       cursor: 'pointer',
@@ -521,8 +512,8 @@ export default function Dashboard() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ borderBottom: `2px solid ${COLORS.border}` }}>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>
+              <tr style={{ borderBottom: `2px solid ${A.border}` }}>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: A.text }}>
                   <input
                     type="checkbox"
                     checked={selectedUserIds.size === users.length && users.length > 0}
@@ -537,14 +528,14 @@ export default function Dashboard() {
                     style={{ marginRight: '8px' }}
                   />
                 </th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Email</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Full Name</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Role</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Department</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Suspended</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Created</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Last Sign In</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Actions</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: A.text }}>Email</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: A.text }}>Full Name</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: A.text }}>Role</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: A.text }}>Department</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: A.text }}>Suspended</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: A.text }}>Created</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: A.text }}>Last Sign In</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: A.text }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -553,7 +544,7 @@ export default function Dashboard() {
                 return (
                   <tr
                     key={user.id}
-                    style={{ borderBottom: `1px solid ${COLORS.border}`, background: isSelected ? '#EAF3F4' : 'transparent' }}
+                    style={{ borderBottom: `1px solid ${A.border}`, background: isSelected ? A.activeBg : 'transparent' }}
                   >
                     <td style={{ padding: '12px', verticalAlign: 'middle' }}>
                       <input
@@ -578,11 +569,11 @@ export default function Dashboard() {
                         onChange={(e) => handleUpdateUser(user.id, { role: e.target.value })}
                         style={{
                           padding: '4px 8px',
-                          border: `1px solid ${COLORS.border}`,
+                          border: `1px solid ${A.border}`,
                           borderRadius: 4,
                           fontSize: 12,
                           fontWeight: 500,
-                          background: COLORS.bg,
+                          background: A.bg,
                         }}
                       >
                         <option value="employee">Employee</option>
@@ -595,11 +586,11 @@ export default function Dashboard() {
                         onChange={(e) => handleUpdateUser(user.id, { department: e.target.value })}
                         style={{
                           padding: '4px 8px',
-                          border: `1px solid ${COLORS.border}`,
+                          border: `1px solid ${A.border}`,
                           borderRadius: 4,
                           fontSize: 12,
                           fontWeight: 500,
-                          background: COLORS.bg,
+                          background: A.bg,
                         }}
                       >
                         <option value="unassigned">Unassigned</option>
@@ -616,7 +607,7 @@ export default function Dashboard() {
                           onChange={(e) => handleUpdateUser(user.id, { suspended: e.target.checked })}
                           style={{ width: 14, height: 14 }}
                         />
-                        <span style={{ fontSize: 13, color: COLORS.text }}>{user.suspended ? 'Yes' : 'No'}</span>
+                        <span style={{ fontSize: 13, color: A.text }}>{user.suspended ? 'Yes' : 'No'}</span>
                       </label>
                     </td>
                     <td style={{ padding: '12px', verticalAlign: 'middle' }}>{formatDate(user.created_at)}</td>
@@ -628,9 +619,9 @@ export default function Dashboard() {
                           style={{
                             padding: '4px 8px',
                             borderRadius: 4,
-                            border: `1px solid ${COLORS.warning}`,
-                            background: COLORS.surface,
-                            color: COLORS.warning,
+                            border: `1px solid ${A.warning}`,
+                            background: A.surface,
+                            color: A.warning,
                             fontSize: 12,
                             fontWeight: 500,
                             cursor: 'pointer',
@@ -648,8 +639,8 @@ export default function Dashboard() {
                             style={{
                               padding: '4px 8px',
                               borderRadius: 4,
-                              border: `1px solid ${COLORS.warning}`,
-                              background: COLORS.warning,
+                              border: `1px solid ${A.warning}`,
+                              background: A.warning,
                               color: '#fff',
                               fontSize: 12,
                               fontWeight: 500,
@@ -663,9 +654,9 @@ export default function Dashboard() {
                             style={{
                               padding: '4px 8px',
                               borderRadius: 4,
-                              border: `1px solid ${COLORS.border}`,
-                              background: COLORS.surface,
-                              color: COLORS.text,
+                              border: `1px solid ${A.border}`,
+                              background: A.surface,
+                              color: A.text,
                               fontSize: 12,
                               fontWeight: 500,
                               cursor: 'pointer',
@@ -681,7 +672,7 @@ export default function Dashboard() {
               })}
               {users.length === 0 && (
                 <tr>
-                  <td colSpan="9" style={{ textAlign: 'center', padding: '24px', color: COLORS.muted }}>
+                  <td colSpan="9" style={{ textAlign: 'center', padding: '24px', color: A.muted }}>
                     No users found
                   </td>
                 </tr>
@@ -698,24 +689,24 @@ export default function Dashboard() {
 
     return (
       <div style={{ padding: '24px' }}>
-        <h2 style={{ margin: '0 0 16px 0', fontSize: 20, color: COLORS.text }}>Documents</h2>
+        <h2 style={{ margin: '0 0 16px 0', fontSize: 20, color: A.text }}>Documents</h2>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ borderBottom: `2px solid ${COLORS.border}` }}>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Title</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Uploaded by</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Chunks</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Size</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>First uploaded</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: COLORS.text }}>Actions</th>
+              <tr style={{ borderBottom: `2px solid ${A.border}` }}>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: A.text }}>Title</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: A.text }}>Uploaded by</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: A.text }}>Chunks</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: A.text }}>Size</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: A.text }}>First uploaded</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 14, fontWeight: 600, color: A.text }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {documents.map((doc) => (
                 <tr
                   key={doc.title}
-                  style={{ borderBottom: `1px solid ${COLORS.border}` }}
+                  style={{ borderBottom: `1px solid ${A.border}` }}
                 >
                   <td style={{ padding: '12px', verticalAlign: 'middle', wordBreak: 'break-all', maxWidth: 300 }}>
                     {doc.title}
@@ -736,9 +727,9 @@ export default function Dashboard() {
                         style={{
                           padding: '4px 8px',
                           borderRadius: 4,
-                          border: `1px solid ${COLORS.warning}`,
-                          background: COLORS.surface,
-                          color: COLORS.warning,
+                          border: `1px solid ${A.warning}`,
+                          background: A.surface,
+                          color: A.warning,
                           fontSize: 12,
                           fontWeight: 500,
                           cursor: 'pointer',
@@ -756,8 +747,8 @@ export default function Dashboard() {
                           style={{
                             padding: '4px 8px',
                             borderRadius: 4,
-                            border: `1px solid ${COLORS.warning}`,
-                            background: COLORS.warning,
+                            border: `1px solid ${A.warning}`,
+                            background: A.warning,
                             color: '#fff',
                             fontSize: 12,
                             fontWeight: 500,
@@ -771,9 +762,9 @@ export default function Dashboard() {
                           style={{
                             padding: '4px 8px',
                             borderRadius: 4,
-                            border: `1px solid ${COLORS.border}`,
-                            background: COLORS.surface,
-                            color: COLORS.text,
+                            border: `1px solid ${A.border}`,
+                            background: A.surface,
+                            color: A.text,
                             fontSize: 12,
                             fontWeight: 500,
                             cursor: 'pointer',
@@ -788,7 +779,7 @@ export default function Dashboard() {
               ))}
               {documents.length === 0 && (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: COLORS.muted }}>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: A.muted }}>
                     No documents found
                   </td>
                 </tr>
@@ -806,15 +797,15 @@ export default function Dashboard() {
     return (
       <div style={{ padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h2 style={{ margin: 0, fontSize: 20, color: COLORS.text }}>Activity Log</h2>
+          <h2 style={{ margin: 0, fontSize: 20, color: A.text }}>Activity Log</h2>
           <button
             onClick={loadDashboardData}
             style={{
               padding: '8px 16px',
               borderRadius: 6,
-              border: `1px solid ${COLORS.border}`,
-              background: COLORS.surface,
-              color: COLORS.primary,
+              border: `1px solid ${A.border}`,
+              background: A.surface,
+              color: A.primary,
               fontSize: 13,
               fontWeight: 600,
               cursor: 'pointer',
@@ -823,34 +814,34 @@ export default function Dashboard() {
             Refresh
           </button>
         </div>
-        <div style={{ maxHeight: '60vh', overflowY: 'auto', border: `1px solid ${COLORS.border}`, borderRadius: 8 }}>
+        <div style={{ maxHeight: '60vh', overflowY: 'auto', border: `1px solid ${A.border}`, borderRadius: 8 }}>
           {activityLog.map((event) => (
             <div
               key={event.id}
               style={{
                 padding: '12px 16px',
-                borderBottom: event.id !== activityLog[activityLog.length - 1]?.id ? `1px solid ${COLORS.border}` : 'none',
-                background: COLORS.surface,
+                borderBottom: event.id !== activityLog[activityLog.length - 1]?.id ? `1px solid ${A.border}` : 'none',
+                background: A.surface,
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                <span style={{ fontSize: 13, color: COLORS.muted }}>
+                <span style={{ fontSize: 13, color: A.muted }}>
                   {new Date(event.created_at).toLocaleString()}
                 </span>
                 <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'capitalize' }}>
                   {event.action === 'chat' ? 'Chat' : event.action === 'upload' ? 'Upload' : 'Admin Action'}
                 </span>
               </div>
-              <div style={{ fontSize: 13, color: COLORS.text, marginBottom: '4px' }}>
+              <div style={{ fontSize: 13, color: A.text, marginBottom: '4px' }}>
                 <strong>{resolveUploaderEmail(event.user_id) || 'System'}</strong> performed this action
               </div>
-              <div style={{ fontSize: 12, fontWeight: 500, color: COLORS.muted, wordBreak: 'break-all', lineHeight: 1.5 }}>
+              <div style={{ fontSize: 12, fontWeight: 500, color: A.muted, wordBreak: 'break-all', lineHeight: 1.5 }}>
                 {event.detail ? JSON.stringify(event.detail, null, 2).slice(0, 200) + (JSON.stringify(event.detail).length > 200 ? '...' : '') : 'No details'}
               </div>
             </div>
           ))}
           {activityLog.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '24px', color: COLORS.muted }}>
+            <div style={{ textAlign: 'center', padding: '24px', color: A.muted }}>
               No activity found
             </div>
           )}
@@ -864,7 +855,7 @@ export default function Dashboard() {
 
     return (
       <div style={{ padding: '24px' }}>
-        <h2 style={{ margin: '0 0 24px 0', fontSize: 20, color: COLORS.text }}>Usage Statistics</h2>
+        <h2 style={{ margin: '0 0 24px 0', fontSize: 20, color: A.text }}>Usage Statistics</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
           {[
             { label: 'Total Users', value: usageStats.totalUsers?.toLocaleString() || '0' },
@@ -876,17 +867,17 @@ export default function Dashboard() {
             <div
               key={stat.label}
               style={{
-                background: COLORS.surface,
-                border: `1px solid ${COLORS.border}`,
+                background: A.surface,
+                border: `1px solid ${A.border}`,
                 borderRadius: 8,
                 padding: '20px',
                 textAlign: 'center',
               }}
             >
-              <div style={{ fontSize: 32, fontWeight: 700, color: COLORS.primary, marginBottom: '8px' }}>
+              <div style={{ fontSize: 32, fontWeight: 700, color: A.primary, marginBottom: '8px' }}>
                 {stat.value}
               </div>
-              <div style={{ fontSize: 14, color: COLORS.text }}>
+              <div style={{ fontSize: 14, color: A.text }}>
                 {stat.label}
               </div>
             </div>
@@ -908,28 +899,28 @@ export default function Dashboard() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: COLORS.bg, fontFamily: "'Inter', system-ui, -apple-system, sans-serif" }}>
+    <div style={{ minHeight: '100vh', background: A.bg, fontFamily: "'Inter', system-ui, -apple-system, sans-serif" }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '14px 24px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`,
+        padding: '14px 24px', background: A.surface, borderBottom: `1px solid ${A.border}`,
       }}>
-        <div style={{ fontWeight: 700, fontSize: 15, color: COLORS.heading }}>
+        <div style={{ fontWeight: 700, fontSize: 15, color: A.heading }}>
           Knowledge Assistant
         </div>
         <Link
           to="/"
-          style={{ fontSize: 14, color: COLORS.primary, fontWeight: 600, textDecoration: 'none' }}
+          style={{ fontSize: 14, color: A.primary, fontWeight: 600, textDecoration: 'none' }}
         >
           ← Back to Home
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <span style={{ fontSize: 13, color: COLORS.muted }}>{user?.email}</span>
+          <span style={{ fontSize: 13, color: A.muted }}>{user?.email}</span>
           {/* FIX 3: Change onClick to call signOut() */}
           <button
             onClick={() => signOut()}
             style={{
-              padding: '7px 14px', borderRadius: 7, border: `1px solid ${COLORS.border}`,
-              background: COLORS.bg, color: COLORS.text, fontSize: 14, fontWeight: 600,
+              padding: '7px 14px', borderRadius: 7, border: `1px solid ${A.border}`,
+              background: A.bg, color: A.text, fontSize: 14, fontWeight: 600,
               cursor: 'pointer',
             }}
           >
@@ -939,7 +930,7 @@ export default function Dashboard() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: `1px solid ${COLORS.border}`, background: COLORS.surface }}>
+      <div style={{ display: 'flex', borderBottom: `1px solid ${A.border}`, background: A.surface }}>
         {[ 'Users', 'Documents', 'Activity Log', 'Usage' ].map((tab) => (
           <div
             key={tab}
@@ -953,8 +944,8 @@ export default function Dashboard() {
               textAlign: 'center',
               fontWeight: activeTab === tab ? 600 : 400,
               fontSize: 13,
-              color: activeTab === tab ? COLORS.primary : COLORS.muted,
-              borderBottom: activeTab === tab ? `2px solid ${COLORS.primary}` : 'transparent',
+              color: activeTab === tab ? A.primary : A.muted,
+              borderBottom: activeTab === tab ? `2px solid ${A.primary}` : 'transparent',
               cursor: 'pointer',
             }}
           >
@@ -968,11 +959,11 @@ export default function Dashboard() {
         <div style={{ maxWidth: '800px',
           margin: '16px auto',
           padding: '12px 16px',
-          background: '#FEF3E7',
-          border: `1px solid #F5D9AE`,
+          background: A.warningBg,
+          border: `1px solid ${A.warningBorder}`,
           borderRadius: 8,
           fontSize: 13,
-          color: COLORS.warning,
+          color: A.warning,
         }}>
           {error}
         </div>

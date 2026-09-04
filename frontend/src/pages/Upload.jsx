@@ -1,16 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase.js';
-
-const COLORS = {
-  primary: '#0F6E7D',
-  bg: '#F7F8FA',
-  surface: '#FFFFFF',
-  text: '#1A1F24',
-  muted: '#6B7280',
-  warning: '#D97706',
-  success: '#2E8B57',
-};
+import { useTheme } from '../context/ThemeContext.jsx';
+import { LIGHT_COLORS, DARK_COLORS } from '../context/themeColors.js';
 
 const MAX_TITLE_LEN = 200;
 const MAX_CONTENT_LEN = 200000; // ~200k chars, comfortably below edge-function compute limits
@@ -32,9 +24,35 @@ export default function Upload() {
   const [pdfFile, setPdfFile] = useState(null);
   const [status, setStatus] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const { theme } = useTheme();
+  const A = theme === 'dark' ? DARK_COLORS : LIGHT_COLORS;
 
   const isError = status.startsWith('Error');
   const isDone = status.startsWith('Done');
+
+  const tabStyle = (active) => ({
+    flex: 1,
+    padding: '8px 0',
+    border: `1px solid ${active ? A.primary : A.border}`,
+    borderRadius: 8,
+    background: active ? A.activeBg : A.surface,
+    color: active ? A.primary : A.muted,
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
+  });
+
+  const inputStyle = {
+    width: '100%',
+    padding: '10px 12px',
+    border: `1px solid ${A.border}`,
+    borderRadius: 8,
+    fontSize: 14,
+    color: A.text,
+    background: A.surface,
+    outline: 'none',
+    boxSizing: 'border-box',
+  };
 
   const validate = () => {
     const trimmedTitle = title.trim();
@@ -99,21 +117,21 @@ export default function Upload() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: COLORS.bg,
+      background: A.bg,
       fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
       padding: 20,
     }}>
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '14px 24px', background: COLORS.surface, borderBottom: '1px solid #E3EEEF',
+        padding: '14px 24px', background: A.surface, borderBottom: `1px solid ${A.border}`,
         marginBottom: 40,
       }}>
-        <div style={{ fontWeight: 700, fontSize: 15, color: '#0F2A2E' }}>
+        <div style={{ fontWeight: 700, fontSize: 15, color: A.heading }}>
           Knowledge Assistant
         </div>
         <Link
           to="/"
-          style={{ fontSize: 12.5, color: COLORS.primary, fontWeight: 600, textDecoration: 'none' }}
+          style={{ fontSize: 12.5, color: A.primary, fontWeight: 600, textDecoration: 'none' }}
         >
           ← Back to Home
         </Link>
@@ -123,16 +141,16 @@ export default function Upload() {
         width: '100%',
         maxWidth: 500,
         margin: '0 auto',
-        background: COLORS.surface,
+        background: A.surface,
         borderRadius: 12,
         padding: '32px 32px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(15,110,125,0.08)',
-        border: '1px solid #E3EEEF',
+        border: `1px solid ${A.border}`,
       }}>
-        <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 700, color: COLORS.text }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 700, color: A.text }}>
           Upload Document
         </h2>
-        <p style={{ margin: '0 0 20px', fontSize: 13, color: COLORS.muted }}>
+        <p style={{ margin: '0 0 20px', fontSize: 13, color: A.muted }}>
           Optional: add internal docs, code, or notes here to give the assistant extra context on IT/CSE-specific things. Not required — the assistant can already answer general and technical questions without any upload.
         </p>
 
@@ -146,7 +164,7 @@ export default function Upload() {
         </div>
 
         <form onSubmit={handleUpload}>
-          <label style={{ display: 'block', fontSize: 12, color: COLORS.muted, marginBottom: 4 }}>
+          <label style={{ display: 'block', fontSize: 12, color: A.muted, marginBottom: 4 }}>
             Title
           </label>
           <input
@@ -159,7 +177,7 @@ export default function Upload() {
 
           {mode === 'text' ? (
             <>
-              <label style={{ display: 'block', fontSize: 12, color: COLORS.muted, margin: '14px 0 4px' }}>
+              <label style={{ display: 'block', fontSize: 12, color: A.muted, margin: '14px 0 4px' }}>
                 Document text
               </label>
               <textarea
@@ -170,13 +188,13 @@ export default function Upload() {
                 maxLength={MAX_CONTENT_LEN}
                 style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
               />
-              <p style={{ marginTop: 4, fontSize: 11, color: COLORS.muted, textAlign: 'right' }}>
+              <p style={{ marginTop: 4, fontSize: 11, color: A.muted, textAlign: 'right' }}>
                 {content.length.toLocaleString()} / {MAX_CONTENT_LEN.toLocaleString()}
               </p>
             </>
           ) : (
             <>
-              <label style={{ display: 'block', fontSize: 12, color: COLORS.muted, margin: '14px 0 4px' }}>
+              <label style={{ display: 'block', fontSize: 12, color: A.muted, margin: '14px 0 4px' }}>
                 PDF file (max {MAX_PDF_MB}MB)
               </label>
               <input
@@ -186,7 +204,7 @@ export default function Upload() {
                 style={{ ...inputStyle, padding: '8px 12px' }}
               />
               {pdfFile && (
-                <p style={{ marginTop: 6, fontSize: 12, color: COLORS.muted }}>
+                <p style={{ marginTop: 6, fontSize: 12, color: A.muted }}>
                   Selected: {pdfFile.name} ({(pdfFile.size / (1024 * 1024)).toFixed(2)} MB)
                 </p>
               )}
@@ -198,7 +216,7 @@ export default function Upload() {
             disabled={submitting}
             style={{
               width: '100%', marginTop: 20, padding: '11px 0', border: 'none',
-              borderRadius: 8, background: submitting ? '#7FA9AF' : COLORS.primary,
+              borderRadius: 8, background: submitting ? A.disabled : A.primary,
               color: '#fff', fontWeight: 600, fontSize: 14,
               cursor: submitting ? 'default' : 'pointer',
             }}
@@ -210,9 +228,9 @@ export default function Upload() {
         {status && (
           <div style={{
             marginTop: 16, padding: '10px 12px', borderRadius: 8,
-            background: isError ? '#FEF3E7' : isDone ? '#EAF6F0' : '#F0F4F5',
-            border: `1px solid ${isError ? '#F5D9AE' : isDone ? '#BFE3CE' : '#E3EEEF'}`,
-            color: isError ? COLORS.warning : isDone ? COLORS.success : COLORS.muted,
+            background: isError ? A.warningBg : isDone ? A.successBg : A.hoverBg,
+            border: `1px solid ${isError ? A.warningBorder : isDone ? A.successBorder : A.border}`,
+            color: isError ? A.warning : isDone ? A.success : A.muted,
             fontSize: 12.5,
           }}>
             {status}
@@ -222,28 +240,3 @@ export default function Upload() {
     </div>
   );
 }
-
-function tabStyle(active) {
-  return {
-    flex: 1,
-    padding: '8px 0',
-    border: `1px solid ${active ? '#0F6E7D' : '#E3EEEF'}`,
-    borderRadius: 8,
-    background: active ? '#EAF3F4' : '#FFFFFF',
-    color: active ? '#0F6E7D' : '#6B7280',
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: 'pointer',
-  };
-}
-
-const inputStyle = {
-  width: '100%',
-  padding: '10px 12px',
-  border: '1px solid #E3EEEF',
-  borderRadius: 8,
-  fontSize: 14,
-  color: '#1A1F24',
-  outline: 'none',
-  boxSizing: 'border-box',
-};
