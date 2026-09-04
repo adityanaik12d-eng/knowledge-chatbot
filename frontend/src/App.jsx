@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.jsx';
+import { ThemeProvider } from './context/ThemeContext.jsx';
 import { ProtectedRoute } from './routes/ProtectedRoute.jsx';
 import Login from './pages/Login.jsx';
 import Home from './pages/Home.jsx';
@@ -12,6 +13,7 @@ import AccessDenied from './pages/AccessDenied.jsx';
 
 export default function App() {
   return (
+    <ThemeProvider>
     <AuthProvider>
       <BrowserRouter>
         <Routes>
@@ -54,5 +56,6 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </ThemeProvider>
   );
 }

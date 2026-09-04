@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { supabase } from '../lib/supabase.js';
+import { useTheme } from '../context/ThemeContext.jsx';
 
 const COLORS = {
   primary: '#0F6E7D',
@@ -13,14 +14,47 @@ const COLORS = {
   warning: '#D97706',
   success: '#2E8B57',
   border: '#E3EEEF',
+  inlineCodeBg: '#F0F4F5',
+  codeBlockBg: '#0F2A2E',
+  codeBlockText: '#E8F4F5',
+  activeItemBg: '#EAF3F4',
+  hoverBg: '#F0F4F5',
+  sourceBg: '#EAF3F4',
+  successBg: '#EAF6F0',
+  warningBg: '#FEF3E7',
+  warningBorder: '#F5D9AE',
+  disabled: '#7FA9AF',
+  brand: '#0F2A2E',
+};
+
+const DARK_COLORS = {
+  primary: '#22A7B3',
+  bg: '#0F1416',
+  surface: '#1A2226',
+  text: '#E8EDEE',
+  muted: '#8A9BA0',
+  warning: '#F59E0B',
+  success: '#34D399',
+  border: '#2A3438',
+  inlineCodeBg: '#232D32',
+  codeBlockBg: '#0D1117',
+  codeBlockText: '#C9D1D9',
+  activeItemBg: '#16282C',
+  hoverBg: '#222D32',
+  sourceBg: '#16282C',
+  successBg: '#0D2818',
+  warningBg: '#3D2200',
+  warningBorder: '#5C3A00',
+  disabled: '#3A4A4E',
+  brand: '#E8EDEE',
 };
 
 const MAX_HISTORY_TURNS = 40;
 const MAX_FILE_SIZE_MB = 8;
 
-const Markdown = React.memo(function Markdown({ children }) {
+const Markdown = React.memo(function Markdown({ children, activeColor }) {
   return (
-    <div style={{ fontSize: 14, lineHeight: 1.6, color: COLORS.text }}>
+    <div style={{ fontSize: 14, lineHeight: 1.6, color: activeColor.text }}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -28,18 +62,18 @@ const Markdown = React.memo(function Markdown({ children }) {
           ul: ({ children }) => <ul style={{ margin: '0 0 8px', paddingLeft: 20 }}>{children}</ul>,
           ol: ({ children }) => <ol style={{ margin: '0 0 8px', paddingLeft: 20 }}>{children}</ol>,
           li: ({ children }) => <li style={{ marginBottom: 3 }}>{children}</li>,
-          strong: ({ children }) => <strong style={{ color: COLORS.text }}>{children}</strong>,
+          strong: ({ children }) => <strong style={{ color: activeColor.text }}>{children}</strong>,
           code: ({ inline, children }) =>
             inline ? (
               <code style={{
-                background: '#F0F4F5', padding: '2px 5px', borderRadius: 4,
-                fontSize: 12.5, fontFamily: 'Consolas, Monaco, monospace', color: '#0F6E7D',
+                background: activeColor.inlineCodeBg, padding: '2px 5px', borderRadius: 4,
+                fontSize: 12.5, fontFamily: 'Consolas, Monaco, monospace', color: activeColor.primary,
               }}>
                 {children}
               </code>
             ) : (
               <pre style={{
-                background: '#0F2A2E', color: '#E8F4F5', padding: '12px 14px', borderRadius: 8,
+                background: activeColor.codeBlockBg, color: activeColor.codeBlockText, padding: '12px 14px', borderRadius: 8,
                 overflowX: 'auto', fontSize: 12.5, fontFamily: 'Consolas, Monaco, monospace',
                 margin: '8px 0', lineHeight: 1.5,
               }}>
@@ -55,6 +89,7 @@ const Markdown = React.memo(function Markdown({ children }) {
 });
 
 export default function Chat() {
+  const { theme, toggleTheme } = useTheme();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -86,6 +121,8 @@ export default function Chat() {
   const speechRef = useRef(null); // For SpeechRecognition instance
   const [isListening, setIsListening] = useState(false); // Mic button state
   const forceScrollToBottomRef = useRef(false);
+
+  const A = theme === 'dark' ? DARK_COLORS : COLORS;
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -741,7 +778,7 @@ export default function Chat() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: COLORS.bg,
+      background: A.bg,
       fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
       display: 'flex',
       height: '100vh',
@@ -750,8 +787,8 @@ export default function Chat() {
       {/* Sidebar */}
       <div style={{
         width: viewportWidth >= 1024 ? (sidebarOpen ? 260 : 60) : (sidebarOpen ? '85vw' : 60),
-        background: COLORS.surface,
-        borderRight: viewportWidth >= 1024 ? `1px solid ${COLORS.border}` : 'none',
+        background: A.surface,
+        borderRight: viewportWidth >= 1024 ? `1px solid ${A.border}` : 'none',
         overflowY: 'auto',
         transition: 'width 0.2s ease',
         display: 'flex',
@@ -771,14 +808,14 @@ export default function Chat() {
           position: viewportWidth < 1024 ? 'sticky' : 'relative',
           top: 0,
           zIndex: 1001,
-          background: viewportWidth < 1024 ? COLORS.surface : 'transparent',
+          background: viewportWidth < 1024 ? A.surface : 'transparent',
         }}>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             style={{
               background: 'none',
               border: 'none',
-              color: COLORS.primary,
+              color: A.primary,
               fontSize: 20,
               cursor: 'pointer',
               padding: 0,
@@ -789,7 +826,7 @@ export default function Chat() {
           </button>
         </div>
         {!sidebarOpen && (
-          <div style={{ height: 60, borderBottom: viewportWidth >= 1024 ? `1px solid ${COLORS.border}` : 'none' }}></div>
+          <div style={{ height: 60, borderBottom: viewportWidth >= 1024 ? `1px solid ${A.border}` : 'none' }}></div>
         )}
         {sidebarOpen && (
           <>
@@ -798,10 +835,10 @@ export default function Chat() {
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: '14px 24px',
-              background: COLORS.surface,
-              borderBottom: `1px solid ${COLORS.border}`,
+              background: A.surface,
+              borderBottom: `1px solid ${A.border}`,
             }}>
-              <div style={{ fontWeight: 700, fontSize: viewportWidth < 640 ? 13 : 15, color: '#0F2A2E' }}>
+              <div style={{ fontWeight: 700, fontSize: viewportWidth < 640 ? 13 : 15, color: A.brand }}>
                 Knowledge Assistant
               </div>
               <button
@@ -809,9 +846,9 @@ export default function Chat() {
                 style={{
                   padding: '6px 12px',
                   borderRadius: 6,
-                  border: `1px solid ${COLORS.border}`,
-                  background: '#FFFFFF',
-                  color: COLORS.primary,
+                  border: `1px solid ${A.border}`,
+                  background: A.surface,
+                  color: A.primary,
                   fontSize: viewportWidth < 640 ? 11 : 12,
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -828,7 +865,7 @@ export default function Chat() {
               {/* Projects section */}
               <div style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontWeight: 600, fontSize: viewportWidth < 640 ? 11 : 13, color: COLORS.text }}>
+                  <div style={{ fontWeight: 600, fontSize: viewportWidth < 640 ? 11 : 13, color: A.text }}>
                     Projects
                   </div>
                   <button
@@ -855,9 +892,9 @@ export default function Chat() {
                     style={{
                       padding: '4px 8px',
                       borderRadius: 4,
-                      border: `1px solid ${COLORS.border}`,
-                      background: '#FFFFFF',
-                      color: COLORS.primary,
+                      border: `1px solid ${A.border}`,
+                      background: A.surface,
+                      color: A.primary,
                       fontSize: viewportWidth < 640 ? 10 : 12,
                       cursor: 'pointer',
                     }}
@@ -875,11 +912,11 @@ export default function Chat() {
                       padding: '8px 12px',
                       marginBottom: 4,
                       borderRadius: 4,
-                      background: activeProjectFilter === null ? '#EAF3F4' : 'transparent',
+                      background: activeProjectFilter === null ? A.activeItemBg : 'transparent',
                       cursor: 'pointer',
                     }}
                   >
-                    <div style={{ flex: 1, fontSize: viewportWidth < 640 ? 11 : 13, color: COLORS.text }}>
+                    <div style={{ flex: 1, fontSize: viewportWidth < 640 ? 11 : 13, color: A.text }}>
                       Show All
                     </div>
                   </div>
@@ -894,11 +931,11 @@ export default function Chat() {
                         padding: '8px 12px',
                         marginBottom: 4,
                         borderRadius: 4,
-                        background: activeProjectFilter === project.id ? '#EAF3F4' : 'transparent',
+                        background: activeProjectFilter === project.id ? A.activeItemBg : 'transparent',
                         cursor: 'pointer',
                       }}
                     >
-                      <div style={{ flex: 1, fontSize: viewportWidth < 640 ? 11 : 13, color: COLORS.text }}>
+                      <div style={{ flex: 1, fontSize: viewportWidth < 640 ? 11 : 13, color: A.text }}>
                         {project.name}
                       </div>
                     </div>
@@ -907,11 +944,11 @@ export default function Chat() {
               </div>
               {/* End Projects section */}
               {loadingConversations ? (
-                <div style={{ textAlign: 'center', color: COLORS.muted, fontSize: viewportWidth < 640 ? 11 : 13, padding: '20px' }}>
+                <div style={{ textAlign: 'center', color: A.muted, fontSize: viewportWidth < 640 ? 11 : 13, padding: '20px' }}>
                   Loading conversations...
                 </div>
               ) : conversations.length === 0 ? (
-                <div style={{ textAlign: 'center', color: COLORS.muted, fontSize: viewportWidth < 640 ? 11 : 13, padding: '20px' }}>
+                <div style={{ textAlign: 'center', color: A.muted, fontSize: viewportWidth < 640 ? 11 : 13, padding: '20px' }}>
                   No conversations yet. Start a new chat!
                 </div>
               ) : (
@@ -924,7 +961,7 @@ export default function Chat() {
                       padding: '10px 16px',
                       margin: '0 8px',
                       borderRadius: 8,
-                      background: activeConversationId === conv.id ? '#EAF3F4' : 'transparent',
+                      background: activeConversationId === conv.id ? A.activeItemBg : 'transparent',
                       cursor: 'pointer',
                       transition: 'background 0.2s',
                       position: 'relative',
@@ -932,7 +969,7 @@ export default function Chat() {
                     onClick={() => handleSelectConversation(conv.id)}
                     onMouseEnter={(e) => {
                       if (activeConversationId !== conv.id) {
-                        e.currentTarget.style.background = '#F0F4F5';
+                        e.currentTarget.style.background = A.hoverBg;
                       }
                       setSidebarHoverId(conv.id);
                     }}
@@ -946,7 +983,7 @@ export default function Chat() {
                     <div style={{
                       flex: 1,
                       fontSize: viewportWidth < 640 ? 11 : 13,
-                      color: activeConversationId === conv.id ? COLORS.primary : COLORS.text,
+                      color: activeConversationId === conv.id ? A.primary : A.text,
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -955,7 +992,7 @@ export default function Chat() {
                     </div>
                     <div style={{
                       fontSize: viewportWidth < 640 ? 9 : 11,
-                      color: COLORS.muted,
+                      color: A.muted,
                       marginLeft: 8,
                     }}>
                       {/* Format date */}
@@ -970,7 +1007,7 @@ export default function Chat() {
                       <div style={{
                         width: 8,
                         height: 8,
-                        background: COLORS.primary,
+                        background: A.primary,
                         borderRadius: 50,
                         marginLeft: 6
                       }}></div>
@@ -984,7 +1021,7 @@ export default function Chat() {
                       transform: 'translateY(-50%)',
                       background: 'none',
                       border: 'none',
-                      color: activeConversationId === conv.id ? COLORS.primary : COLORS.muted,
+                      color: activeConversationId === conv.id ? A.primary : A.muted,
                       fontSize: 18,
                       cursor: sidebarHoverId === conv.id ? 'pointer' : 'default',
                       display: (sidebarHoverId === conv.id || !sidebarOpen) ? 'flex' : 'none',
@@ -1011,8 +1048,8 @@ export default function Chat() {
                           position: 'absolute',
                           right: '8px',
                           top: 'calc(100% + 4px)',
-                          background: COLORS.surface,
-                          border: `1px solid ${COLORS.border}`,
+                          background: A.surface,
+                          border: `1px solid ${A.border}`,
                           borderRadius: '4px',
                           boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                           zIndex: '1000',
@@ -1045,10 +1082,10 @@ export default function Chat() {
                           }}
                           style={{
                             padding: '8px 12px',
-                            color: COLORS.warning,
+                            color: A.warning,
                             fontSize: '12px',
                             cursor: 'pointer',
-                            background: hoveredMenuItem === `delete-${conv.id}` ? '#FEF3E7' : 'transparent',
+                            background: hoveredMenuItem === `delete-${conv.id}` ? A.warningBg : 'transparent',
                           }}
                         >
                           {confirmDeleteId === conv.id ? 'Confirm delete?' : 'Delete'}
@@ -1076,10 +1113,10 @@ export default function Chat() {
                           }}
                           style={{
                             padding: '8px 12px',
-                            color: COLORS.primary,
+                            color: A.primary,
                             fontSize: '12px',
                             cursor: 'pointer',
-                            background: hoveredMenuItem === `move-${conv.id}` ? '#EAF3F4' : 'transparent',
+                            background: hoveredMenuItem === `move-${conv.id}` ? A.activeItemBg : 'transparent',
                           }}
                         >
                           Move to project
@@ -1093,8 +1130,8 @@ export default function Chat() {
                               position: 'fixed',
                               top: submenuPosition.top,
                               left: submenuPosition.left,
-                              background: COLORS.surface,
-                              border: `1px solid ${COLORS.border}`,
+                              background: A.surface,
+                              border: `1px solid ${A.border}`,
                               borderRadius: '4px',
                               boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                               zIndex: 1001,
@@ -1121,10 +1158,10 @@ export default function Chat() {
                                 }}
                                 style={{
                                   padding: '8px 12px',
-                                  color: COLORS.warning,
+                                  color: A.warning,
                                   fontSize: '12px',
                                   cursor: 'pointer',
-                                  background: hoveredMenuItem === `remove-${conv.id}` ? '#FEF3E7' : 'transparent',
+                                  background: hoveredMenuItem === `remove-${conv.id}` ? A.warningBg : 'transparent',
                                 }}
                               >
                                 Remove from project
@@ -1151,10 +1188,10 @@ export default function Chat() {
                                 }}
                                 style={{
                                   padding: '8px 12px',
-                                  color: project.id === conv.project_id ? COLORS.muted : COLORS.primary,
+                                  color: project.id === conv.project_id ? A.muted : A.primary,
                                   fontSize: '12px',
                                   cursor: 'pointer',
-                                  background: hoveredMenuItem === `project-${conv.id}-${project.id}` ? '#EAF3F4' : 'transparent',
+                                  background: hoveredMenuItem === `project-${conv.id}-${project.id}` ? A.activeItemBg : 'transparent',
                                 }}
                               >
                                 {project.name}
@@ -1180,16 +1217,33 @@ export default function Chat() {
       }}>
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '14px 24px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`,
+          padding: '14px 24px', background: A.surface, borderBottom: `1px solid ${A.border}`,
         }}>
-          <div style={{ fontWeight: 700, fontSize: viewportWidth < 640 ? 13 : 15, color: '#0F2A2E' }}>
+          <div style={{ fontWeight: 700, fontSize: viewportWidth < 640 ? 13 : 15, color: A.brand }}>
             Knowledge Assistant
           </div>
-          {sidebarOpen && (
-            <Link to="/" style={{ fontSize: viewportWidth < 640 ? 10.5 : 12.5, color: COLORS.primary, fontWeight: 600, textDecoration: 'none' }}>
-              ← Back to Home
-            </Link>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {sidebarOpen && (
+              <Link to="/" style={{ fontSize: viewportWidth < 640 ? 10.5 : 12.5, color: A.primary, fontWeight: 600, textDecoration: 'none' }}>
+                ← Back to Home
+              </Link>
+            )}
+            <button
+              onClick={toggleTheme}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: A.primary,
+                fontSize: 20,
+                cursor: 'pointer',
+                padding: 0,
+                lineHeight: 1,
+              }}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+          </div>
         </div>
 
         <div
@@ -1207,7 +1261,7 @@ export default function Chat() {
           }}
         >
           {messages.length === 0 && activeConversationId === null && (
-            <div style={{ textAlign: 'center', color: COLORS.muted, fontSize: viewportWidth < 640 ? 11.5 : 13.5, marginTop: 60 }}>
+            <div style={{ textAlign: 'center', color: A.muted, fontSize: viewportWidth < 640 ? 11.5 : 13.5, marginTop: 60 }}>
               Ask me anything — I can help with code, IT questions, troubleshooting, or reference your team's uploaded docs when relevant.
             </div>
           )}
@@ -1216,18 +1270,18 @@ export default function Chat() {
             // Handle different message types for styling
             if (m.role === 'system') {
               // System messages (file uploads)
-              let bgColor = '#F0F4F5'; // default light gray
-              let textColor = COLORS.muted;
+              let bgColor = A.hoverBg; // default light gray
+              let textColor = A.muted;
 
               if (m.type === 'success') {
-                bgColor = '#EAF6F0'; // light teal/green
-                textColor = COLORS.success;
+                bgColor = A.successBg; // light teal/green
+                textColor = A.success;
               } else if (m.type === 'error') {
-                bgColor = '#FEF3E7'; // light orange/red
-                textColor = COLORS.warning;
+                bgColor = A.warningBg; // light orange/red
+                textColor = A.warning;
               } else if (m.type === 'uploading') {
-                bgColor = '#EAF3F4'; // light blue/teal
-                textColor = COLORS.primary;
+                bgColor = A.activeItemBg; // light blue/teal
+                textColor = A.primary;
               }
 
               return (
@@ -1254,7 +1308,7 @@ export default function Chat() {
                 {m.role === 'user' && (
                   <div style={{
                     maxWidth: viewportWidth < 640 ? '90%' : viewportWidth < 1024 ? '85%' : '75%',
-                    background: COLORS.primary, color: '#fff',
+                    background: A.primary, color: '#fff',
                     padding: '10px 14px', borderRadius: '14px 14px 2px 14px', fontSize: viewportWidth < 640 ? 12 : 14, lineHeight: 1.5,
                   }}>
                     {m.text}
@@ -1263,22 +1317,22 @@ export default function Chat() {
                 {m.role === 'assistant' && (
                   <div style={{
                     maxWidth: viewportWidth < 640 ? '90%' : viewportWidth < 1024 ? '85%' : '85%',
-                    background: COLORS.surface, border: `1px solid ${COLORS.border}`,
+                    background: A.surface, border: `1px solid ${A.border}`,
                     padding: '12px 14px', borderRadius: '14px 14px 14px 2px',
                   }}>
-                    {m.text ? <Markdown>{m.text}</Markdown> : (
-                      <span style={{ fontSize: viewportWidth < 640 ? 11 : 13, color: COLORS.muted }}>Thinking…</span>
+                    {m.text ? <Markdown activeColor={A}>{m.text}</Markdown> : (
+                      <span style={{ fontSize: viewportWidth < 640 ? 11 : 13, color: A.muted }}>Thinking…</span>
                     )}
                     {m.sources && m.sources.length > 0 && (
-                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${COLORS.border}` }}>
-                        <div style={{ fontSize: viewportWidth < 640 ? 9 : 11, color: COLORS.muted, marginBottom: 6, fontWeight: 600 }}>
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${A.border}` }}>
+                        <div style={{ fontSize: viewportWidth < 640 ? 9 : 11, color: A.muted, marginBottom: 6, fontWeight: 600 }}>
                           SOURCES
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                           {m.sources.map((s, si) => (
                             <span key={si} style={{
                               fontSize: viewportWidth < 640 ? 9 : 11, padding: '3px 8px', borderRadius: 12,
-                              background: '#EAF3F4', color: COLORS.primary, fontWeight: 600,
+                              background: A.sourceBg, color: A.primary, fontWeight: 600,
                             }}>
                               {s.title} · {s.similarity}%
                             </span>
@@ -1291,8 +1345,8 @@ export default function Chat() {
                 {m.role === 'error' && (
                   <div style={{
                     maxWidth: viewportWidth < 640 ? '90%' : viewportWidth < 1024 ? '85%' : '85%',
-                    background: '#FEF3E7', border: '1px solid #F5D9AE',
-                    padding: '10px 14px', borderRadius: 10, fontSize: viewportWidth < 640 ? 11 : 13, color: COLORS.warning,
+                    background: A.warningBg, border: `1px solid ${A.warningBorder}`,
+                    padding: '10px 14px', borderRadius: 10, fontSize: viewportWidth < 640 ? 11 : 13, color: A.warning,
                   }}>
                     {m.text}
                   </div>
@@ -1305,7 +1359,7 @@ export default function Chat() {
 
         <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`, padding: '16px 20px',
+          background: A.surface, borderTop: `1px solid ${A.border}`, padding: '16px 20px',
         }}>
           <form onSubmit={handleSend} style={{
             maxWidth: viewportWidth >= 1024 ? 760 : '95%',
@@ -1323,16 +1377,16 @@ export default function Chat() {
                   width: 36,
                   height: 36,
                   borderRadius: 8,
-                  border: `1px solid ${COLORS.border}`,
-                  background: !uploading && fileButtonHover ? '#EAF3F4' : uploading ? '#7FA9AF' : '#FFFFFF',
-                  color: uploading ? '#6B7280' : COLORS.primary,
+                  border: `1px solid ${A.border}`,
+                  background: !uploading && fileButtonHover ? A.activeItemBg : uploading ? A.disabled : A.surface,
+                  color: uploading ? A.muted : A.primary,
                   fontSize: 18,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: uploading ? 'default' : 'pointer',
                   transition: 'all 0.2s',
-                  borderColor: !uploading && fileButtonHover ? COLORS.primary : 'inherit'
+                  borderColor: !uploading && fileButtonHover ? A.primary : 'inherit'
                 }}
               >
                 +
@@ -1357,9 +1411,9 @@ export default function Chat() {
                   width: 36,
                   height: 36,
                   borderRadius: 8,
-                  border: `1px solid ${COLORS.border}`,
-                  background: !isListening && !((!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window))) && micButtonHover ? '#EAF3F4' : isListening ? '#FF6B6B' : '#FFFFFF',
-                  color: isListening ? '#fff' : COLORS.primary,
+                  border: `1px solid ${A.border}`,
+                  background: !isListening && !((!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window))) && micButtonHover ? A.activeItemBg : isListening ? '#FF6B6B' : A.surface,
+                  color: isListening ? '#fff' : A.primary,
                   fontSize: 18,
                   display: 'flex',
                   alignItems: 'center',
@@ -1367,7 +1421,7 @@ export default function Chat() {
                   cursor: !('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window) ? 'default' : 'pointer',
                   opacity: !('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window) ? 0.5 : 1,
                   transition: 'all 0.2s',
-                  borderColor: !isListening && !((!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window))) && micButtonHover ? COLORS.primary : 'inherit'
+                  borderColor: !isListening && !((!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window))) && micButtonHover ? A.primary : 'inherit'
                 }}
                 title={!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window) ? 'Voice input not supported in this browser' : ''}
               >
@@ -1395,13 +1449,15 @@ export default function Chat() {
                   minHeight: '2.5rem',
                   maxHeight: '200px',
                   padding: '14px 16px',
-                  border: `1px solid ${COLORS.border}`,
+                  border: `1px solid ${A.border}`,
                   borderRadius: 10,
                   fontSize: 14,
                   fontFamily: 'inherit',
                   resize: 'none',
                   outline: 'none',
                   overflowY: 'hidden',
+                  background: A.surface,
+                  color: A.text,
                 }}
               />
             </div>
@@ -1435,7 +1491,7 @@ export default function Chat() {
                   padding: '10px 20px',
                   border: 'none',
                   borderRadius: 10,
-                  background: !input.trim() ? '#7FA9AF' : COLORS.primary,
+                  background: !input.trim() ? A.disabled : A.primary,
                   color: '#fff',
                   fontWeight: 600,
                   fontSize: 14,
@@ -1447,7 +1503,7 @@ export default function Chat() {
             )}
           </form>
           {error && (
-            <div style={{ maxWidth: viewportWidth >= 1024 ? 760 : '95%', margin: '8px auto 0', fontSize: 12, color: COLORS.warning }}>
+            <div style={{ maxWidth: viewportWidth >= 1024 ? 760 : '95%', margin: '8px auto 0', fontSize: 12, color: A.warning }}>
               {error}
             </div>
           )}
