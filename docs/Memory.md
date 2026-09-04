@@ -1,87 +1,75 @@
 ﻿# Memory Document
 **Project:** IT/CSE Knowledge Assistant — Venus Remedies
 
-> Update this file after every work session. Keep entries short and factual — this exists so anyone (including a future AI session) can pick up exactly where work left off, without re-reading the whole conversation history.
+> Update this file after every work session.
 
 ---
 
 ## What Has Been Completed
 
-- [x] Project planning docs created: Project-Requirements.md, Architecture.md, Rules.md, Phases.md, Design.md, Memory.md
-- [x] Supabase project created (`knowledge-chatbot`, ap-south-1 region) — separate from CrickCoach
-- [x] Phase 1 — Login: COMPLETE
-  - Frontend: React (Vite) at `frontend/`, using Supabase Auth (email + password)
-  - Files: `src/lib/supabase.js`, `src/context/AuthContext.jsx`, `src/routes/ProtectedRoute.jsx`, `src/pages/Login.jsx`, `src/pages/Home.jsx`
-  - Verified: signup, login, session persists across refresh, logout — all working
-- [x] Phase 2 — Document Ingestion: COMPLETE
-  - Upload page (`src/pages/Upload.jsx`): text paste, PDF upload, and bulk multi-file upload (3 tabs)
-  - Edge Function `ingest`: chunking + embedding (`gte-small`) + insert into `documents` table
-  - PDF text extraction via `unpdf` — digital/text-layer PDFs only, not scanned/image PDFs
-  - `documents` table: id, title, content, embedding (vector), uploaded_by, created_at
-  - Access control evolved: originally admin-only, now **any IT/CSE department member can upload** (shared team knowledge base model)
-- [x] Security hardening: COMPLETE
-  - Input validation (Login.jsx, Upload.jsx), server-side sanitization (both Edge Functions), login lockout (5 attempts/60s), password hashing (automatic via Supabase Auth), generic error messages (no internal detail leakage)
-  - Email-based password reset flow: `resetPassword`/`updatePassword` in `AuthContext.jsx`, `src/pages/ResetPassword.jsx`, `/reset-password` route
-  - DB security fixes applied: `search_path` set explicitly on `match_documents()` and `handle_new_user()`; `handle_new_user()` public RPC execute permission revoked from `anon`/`authenticated`
-  - Known limitation: "Leaked password protection" (Supabase Auth setting) requires Pro plan — not available on free tier, skipped
-  - Minimum password length in Supabase Auth settings still at default (6) vs. app's own 8-char rule — mismatch noted, not yet fixed (low priority)
-- [x] IT/CSE Department Restriction: COMPLETE
-  - Project narrowed in scope: internal tool for IT/CSE staff only (not company-wide)
-  - `profiles` table has `department` column (`'IT/CSE'`/`'unassigned'`, default unassigned), assigned manually by admin via SQL/Table Editor
-  - `ProtectedRoute.jsx` gates on `isITCSE`; non-IT/CSE users redirected to `/access-denied` (`AccessDenied.jsx`, with working logout that properly navigates to `/login`)
-  - Both Edge Functions (`ingest`, `chat`) independently check `profiles.department === 'IT/CSE'` server-side
-  - Known accounts: `adityanaik.12d@gmail.com` (admin, IT/CSE), `eduhorizon.67@gmail.com` (employee, IT/CSE — test account)
-- [x] **Phase 3 — Core Chat + Reasoning: COMPLETE** (redefined mid-phase, see pivot below)
-  - New DB function `match_documents()` for pgvector cosine similarity search
-  - `chat` Edge Function: streaming responses (NDJSON protocol), conversation memory
-  - **Major architecture pivot (2026-08-09 through 2026-08-12):** moved from strict "only answer from uploaded documents" (RAG-only) model to a **general-reasoning assistant model** — like Claude/ChatGPT. The assistant now answers freely from its own knowledge (NVIDIA `meta/llama-3.1-8b-instruct`), and uses uploaded documents only as *optional* enrichment context — cited when relevant, never a hard requirement to answer
-    - Reason for pivot: strict retrieval-only grounding was causing frustrating false-negatives ("I don't have enough information" even when the answer existed in an uploaded doc) despite several tuning attempts (match count 5→8→12, threshold adjustments, prompt tweaks). A more serious hallucination bug was also found and fixed along the way (assistant fabricated a fake "leave policy" when conversation history existed but no document matched — fixed by making the retrieval-empty fallback unconditional in the old model; this whole issue became moot after the pivot to reasoning-first)
-    - Trade-off consciously accepted: answers are no longer guaranteed traceable to a source — this differs from the original core safety rule for this pharma-company internal tool. Documented explicitly for future reference.
-    - Planning docs rewritten to reflect this: `Project-Requirements.md`, `Architecture.md`, `Rules.md`, `Phases.md` all updated and pushed to GitHub
-    - Natural Hinglish tone fixed via system prompt (previously produced stiff, overly formal/textbook Hindi translations — now matches casual bilingual chat style)
-    - Retrieval performance: time-boxed to 4 seconds (never blocks the answer if slow), `max_tokens` reduced 1500→800 for faster typical replies
-    - Model history: `meta/llama-3.3-70b-instruct` tried first, abandoned (too slow/unreliable on NVIDIA free tier, timed out even at 55s) — settled on `meta/llama-3.1-8b-instruct`, fast and reliable
-  - **Multi-chat history (Claude-style):** new tables `conversations` and `messages` (both RLS-enabled), `Chat.jsx` rebuilt with sidebar (conversation list, "+ New Chat", click-to-switch, full persistence across page refresh). Fixed a field-name mismatch bug (DB `content` vs UI `text`) that caused loaded conversations to show empty bubbles / stuck "Thinking…"
-  - **Inline file upload in chat (Claude-style "+" button):** uploads go straight into the shared knowledge base via the existing `ingest` Edge Function. Fixed an auth bug (`user.access_token` doesn't exist — must use `session.access_token` from `supabase.auth.getSession()`)
-  - **Done when (met):** a logged-in IT/CSE staff member can ask any question — technical, coding, or about internal docs — and get a direct, useful answer, with persistent multi-chat history and easy in-chat document upload
-  - All of the above tested end-to-end and confirmed working by the user (2026-08-12): general reasoning, document-grounded answers with citations, follow-up memory, multi-chat switching, refresh-persistence, file upload, streaming, Hinglish tone, IT/CSE access gate intact
+- [x] Phase 1-6 complete (login, ingestion, security, error-handling+rate-limit, admin dashboard, design-align + load-testing) — see prior entries below.
+- [x] Production deployment on Vercel (fixed SPA-routing 404, Framework Preset fix, Supabase Auth redirect URLs updated), password-reset re-verified on production.
+- [x] Chat system-prompt identity update: "built by IT/CSE team, for users at Venus Remedies."
+- [x] **NVIDIA model-retirement incident (2026-08-26) — fully resolved, corrected version:**
+  - Both depended-on models retired by NVIDIA with zero advance warning: chat model `meta/llama-3.1-8b-instruct` (EOL 2026-08-26) and embedding model `nvidia/nv-embedqa-e5-v5` (EOL 2026-08-25) — both returned HTTP 410 Gone.
+  - Diagnosed via NVIDIA's live `/v1/models` endpoint (83 active models) rather than guessing from blogs; test-called candidates directly since presence in the list doesn't guarantee callability. New models adopted: chat → `openai/gpt-oss-20b`, embedding → `nvidia/nemotron-3-embed-1b` (2048-dim, up from 1024).
+  - `documents.embedding` column altered `vector(1024)` → `vector(2048)` (had to drop the old ivfflat index first — pgvector's ivfflat caps at 2000 dimensions). Existing 750 chunks' embeddings set to null (no in-place resize possible), text content preserved.
+  - **Correction to an earlier claim:** a prior session's Memory.md entry stated the 750-chunk backfill was "confirmed complete" — this was **not actually true**. A follow-up session found, via direct live-database query, that only 40 chunks (a just-uploaded document) had embeddings; all 750 pre-existing chunks were still `NULL`. The backfill Edge Function had been built but never actually finished running. Re-triggered and completed properly this time: since direct Edge Function invocation wasn't available as a tool in that session, the `http` Postgres extension was installed and used to call the backfill function repeatedly from SQL (`extensions.http_post`, with `CURLOPT_TIMEOUT_MS` raised past the 5s default) until it reported `done: true`. Verified directly against the live table afterward: `790/790` rows with non-null embeddings, `0` remaining — not just trusting the function's own "done" claim.
+  - End-to-end retrieval re-verified by the user asking a question tied to a specific pre-existing document (`SOP_for_allotment__withdrawal_of_authorizations_for_usage_of_computer_system_signed.pdf`) and confirming it was correctly cited as a source — this is the test that actually proves the backfill worked, as opposed to just checking row counts.
+  - Temporary diagnostic Edge Functions (`nvidia-diag`, `reembed-migration`) neutralized (redeployed as harmless no-ops) after use, since both were left publicly callable (`verify_jwt: false`) and `nvidia-diag` exposed API key presence/length/prefix to anyone who hit the URL.
+  - **Lesson reinforced (this is now the second time this exact mistake happened in this project):** never trust a "this is done" claim — from a log entry, a tool's own success response, or even a prior AI session's summary — without independently checking live state. A migration function returning `done: true` is still worth a separate `SELECT COUNT(*)` against the real table before calling it confirmed.
+  - **New tooling note:** when direct Edge Function invocation isn't available in a session (no `invoke_edge_function`-style MCP tool), the Postgres `http` extension can call an Edge Function's own HTTPS URL directly from SQL as a workaround — useful specifically because the function's own secrets (API keys) stay server-side and don't need to be known at the SQL layer. Default `http` extension timeout is only 5 seconds; raise via `http_set_curlopt('CURLOPT_TIMEOUT_MS', ...)` before calling anything slower.
 
 ## Currently In Progress
 
-- **Phase status:** Phase 3 (Core Chat + Reasoning) is now fully complete and verified. Currently sitting between Phase 3 and Phase 4 — next planned phase is **Phase 4 (Fallback & Error Handling)**, specifically rate limiting on the chat endpoint, which is not yet implemented.
-- **File/module:** None active — no work in progress right now
-- **Status:** User has explicitly decided to hold off on further feature work until the chatbot is live/deployed
-- **Blockers:** None
+- **File/module:** None active.
+- **Status:** Chatbot fully live and confirmed working in production, including verified-correct retrieval from the pre-existing 18-document knowledge base after the full incident (model retirement + dimension migration + backfill) is now genuinely resolved, not just claimed resolved.
+- **Blockers:** None.
+- **Recommended next step:** (1) Upload NextGen ERP documentation to the knowledge base — a public Notion page (SpineNextGen Training & FAQ) was identified but lives in a workspace the connected Notion integration can't access; a second attempt reconnected Notion to the correct company workspace (`GenNex-SpineBMS`) and found the real "Spine Training Center" hub with 3 sub-pages and a 135-row module directory database, partially explored (module list + a few "how-to" FAQ pages fetched) before this session's NVIDIA-outage detour — resuming this is the next real task. (2) Send credentials to already-created reviewer accounts now that deployment/auth/model issues are all resolved.
+
+## Deferred (explicitly, not forgotten)
+
+- Large PDF ingestion still unreliable (real 408-page book PDF still fails). Not resolved.
+- NextGen ERP knowledge base population — Notion source now accessible, extraction in progress, not yet uploaded.
 
 ## Open Decisions / Not Yet Finalized
 
-- Minimum password length mismatch (Supabase Auth setting at 6, app enforces 8) — not yet synced, low priority
-- No further feature work planned until after going live, per user's explicit decision (2026-08-12)
-- Rate limiting on `/chat` and `/ingest` endpoints — not yet implemented, planned for Phase 4
+- Minimum password length — resolved (both sides enforce 8).
+- Skip-sources-on-bare-greeting — not confirmed present in current code.
+- Dashboard actions beyond "Add User" — not individually re-verified.
+- No monitoring/alerting for third-party model deprecations — this is now the pattern's second occurrence (first: Groq's `gemma2-9b-it`); worth a periodic health-check or documented manual-check cadence.
+- Rollout: send credentials to reviewer accounts.
 
 ## Known Pitfalls (learned the hard way — avoid repeating)
 
-- Don't let an AI agent freely rearchitect an already-working piece without being asked
-- Verify library imports actually exist before using them
-- When editing files via Notepad on Windows, always confirm the save actually took — silent non-saves and mid-paste cutoffs (once caused a JSX syntax error) have happened multiple times; always confirm full file length/ending after a large paste
-- Prefer PowerShell heredoc (`@'...'@ | Set-Content`) over interactive Notepad for reliably writing file content
-- Large PDFs (100+ pages) fail with compute limits — 8MB file-size cap enforced upfront in Upload.jsx and the Edge Function to prevent this
-- Deleting a row from `profiles` does NOT delete the actual login account (`auth.users` is separate) — full account deletion requires deleting from `auth.users` too
-- Supabase free-tier email sending has a rate limit — heavy testing (multiple signups/resets) can silently fail to send confirmation/reset emails
-- Deleting+recreating a test auth account resets `profiles.department` back to default `'unassigned'` — must be manually re-set
-- When delegating file generation to Claude Code, always instruct it to write output into a separate new folder (not edit real files directly) and to output complete, unambiguous single-block prompts with exact code snippets — vague "fix this" instructions led to a subtle auth-token bug (`user.access_token` vs `session.access_token`) that took an extra debugging round to catch
-- When asking Claude Code for multiple file outputs at once via terminal print, files can get concatenated/mixed together, making it hard to tell where one ends and another begins — safer to have it write actual separate files to disk in a dedicated folder rather than printing everything to the terminal
-- Supabase free tier: project auto-pauses after 7 days of no activity (requires manual resume from dashboard) — worth monitoring once live
-- NVIDIA free tier: ~40 requests/minute rate limit — more than sufficient for a small IT/CSE team, but worth knowing if usage ever scales up
+- Don't let an AI agent freely rearchitect an already-working piece without being asked; verify library imports exist before using them; prefer PowerShell heredoc over interactive Notepad; deleting a `profiles` row doesn't delete the `auth.users` account; re-creating a test account resets `department` to `'unassigned'`.
+- Full-file regenerations by Claude Code can silently drop fixes and introduce new syntax errors — always re-verify and parse.
+- A "VERIFIED"/"done"/"complete" claim from any tool, log entry, or prior AI session is not trustworthy on its own — **this has now caused two separate incidents in this project** (the 384/1024-dim bug, and the 750-chunk backfill that was claimed done but wasn't). Independently re-check live state every time, no exceptions.
+- Confirm model availability against a provider's own live `/v1/models` endpoint, not blog posts or docs. Being listed doesn't guarantee callability — test-call before committing.
+- A clean structured error (e.g. HTTP 410 Gone with a `detail` field naming an EOL date) should be read and trusted fully — it may directly state the root cause.
+- `supabase.functions.fetch(...)` isn't real — use `.functions.invoke()`. CORS `Access-Control-Allow-Headers` needs `x-client-info` for `.invoke()` calls to succeed.
+- `profiles.last_sign_in_at` doesn't exist — read via `auth.admin.listUsers()`.
+- Changing an embedding model's dimensionality requires a `vector(N)` column-type change AND a full re-embedding backfill — happened twice now, treat as standard whenever the embedding model changes. Also: pgvector's `ivfflat` index type caps at 2000 dimensions — drop the index before widening past that, don't assume the column-type change alone will work.
+- A connector showing "Connected" in the UI doesn't guarantee its tools are callable in a given session — this can be a structural gap, not a fixable sync issue.
+- A public Notion page shared from a personal/individual workspace isn't accessible to a company's connected integration even with a valid link — needs duplicating into the connected workspace, or reconnecting the integration to the correct workspace outright (which is what actually worked here).
+- When no direct Edge-Function-invoke tool is available, the Postgres `http` extension can call a function's own URL from SQL as a working alternative — remember to raise its default 5-second timeout for anything slow.
 
 ## Log (most recent first)
 
 | Date | What changed |
 |------|--------------|
-| 2026-08-12 | Phase 3 (Core Chat + Reasoning) marked fully complete: general-reasoning assistant model (NVIDIA `llama-3.1-8b-instruct`) — answers freely from own knowledge, uses uploaded docs as optional cited context, no longer hard-gated on document match. Docs (Project-Requirements.md, Architecture.md, Rules.md, Phases.md) rewritten and pushed to GitHub. Natural Hinglish tone fixed via system prompt. Multi-chat history added: `conversations` + `messages` tables (RLS enabled), sidebar with conversation list, new-chat/switch-chat, full persistence across page refresh. Inline "+" file-attach added to chat input — uploads go straight to shared knowledge base via existing `ingest` function (fixed an auth-token bug where wrong token source caused "Not authenticated" failures). Response speed improved: retrieval time-boxed to 4s (never blocks answer), max_tokens reduced 1500→800 for faster typical replies. All changes tested end-to-end by user and confirmed working. User has decided to pause further feature work until the chatbot goes live — next phase is Phase 4 (rate limiting). |
-| 2026-08-08 | Phase 3 (Core Chat + Retrieval, original RAG-only version) completed and initially verified: vector search (`match_documents` SQL function), `chat` Edge Function, streaming responses, conversation memory (pre-multi-chat, single-thread version). A hallucination bug was found (fake "leave policy" fabricated when no document matched but conversation history existed) and fixed by forcing the empty-match fallback unconditionally — this whole issue later became moot after the reasoning-model pivot above. |
-| 2026-08-04 | Security hardening completed: input validation, server-side sanitization, login-attempt lockout, generic error messages, email-based password reset flow — all verified working. Phase 2 (Document Ingestion) completed and verified: text + PDF upload, chunking, embedding, vector storage, admin-only restriction (later loosened to all IT/CSE members). |
-| 2026-07-29 | Phase 1 (Login) completed and verified end-to-end: signup, login, session persistence, logout all working via Supabase Auth. |
-| 2026-07-28 | Reverted incorrect custom Express backend (created without instruction); restored clean Supabase-Auth-based frontend for Phase 1. |
-| 2026-07-25 | Supabase project `knowledge-chatbot` created; Phase 1 Login code (Supabase Auth) built and delivered. |
-| 2026-07-25 | Initial 6 planning docs created: Project-Requirements.md, Architecture.md, Rules.md, Phases.md, Design.md, Memory.md. |
+| 2026-08-29 (approx.) | Corrected an inaccurate "backfill complete" claim from a prior session: live-checked the database, found only 40/790 chunks had embeddings (not 750 as claimed), and properly completed the backfill for all 750 pre-existing chunks using the Postgres `http` extension to repeatedly invoke the backfill Edge Function from SQL. Verified `790/790` embeddings present via direct query, then verified real retrieval end-to-end via a targeted user test against a known pre-existing document. Neutralized two diagnostic Edge Functions left publicly exposed after the incident. |
+| 2026-08-26 | NVIDIA retired both depended-on models (chat + embedding), full production outage. Diagnosed via NVIDIA's live model list, adopted `openai/gpt-oss-20b` (chat) and `nvidia/nemotron-3-embed-1b` (embedding, 2048-dim). Production deployment migrated GitHub Pages → Vercel (SPA-routing fix), Supabase Auth redirect URLs updated, system-prompt identity wording updated. |
+| 2026-08-23 | Phase 6 completed: Design.md typography alignment, load testing (found + fixed a rate-limit race condition via atomic Postgres function). |
+| 2026-08-22 | Fixed critical `vector(384)` vs `vector(1024)` embedding-dimension mismatch breaking all uploads. Chat.jsx fixes: upload-history-awareness, inline delete-confirm, dropdown hover states. |
+| 2026-08-21 | Phase 5 (Admin Dashboard) built, confirmed working. Chat system prompt UTC → IST. |
+| 2026-08-20 | Phase 4 signed off complete. PDF page-by-page extraction fix deployed; still fails on very large PDFs — deferred. |
+| 2026-08-17 (approx.) | Streaming re-enabled. Full revert to last-known-working after provider-switching confusion. |
+| 2026-08-14 to 2026-08-17 (approx.) | Groq/NVIDIA provider debugging, CPU-timeout root cause fixed via hosted-embedding switch. |
+| 2026-08-13 to 2026-08-14 (approx.) | Six-point UI/UX overhaul, multi-round Chat.jsx bug-fix pass. |
+| 2026-08-12 | Phase 3 (Core Chat + Reasoning) complete. Multi-chat history, inline file-attach. |
+| 2026-08-08 | Phase 3 (original RAG-only) completed and verified. |
+| 2026-08-04 | Security hardening + Phase 2 (Ingestion) completed and verified. |
+| 2026-07-29 | Phase 1 (Login) completed and verified end-to-end. |
+| 2026-07-28 | Reverted incorrect custom Express backend; restored Supabase-Auth frontend. |
+| 2026-07-25 | Supabase project created; Phase 1 code delivered. Initial 6 planning docs created. |
