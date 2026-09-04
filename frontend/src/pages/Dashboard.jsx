@@ -280,6 +280,7 @@ export default function Dashboard() {
                     borderRadius: 6,
                     fontSize: 13,
                     background: A.bg,
+                    color: A.text,
                   }}
                   required
                 />
@@ -298,6 +299,7 @@ export default function Dashboard() {
                     borderRadius: 6,
                     fontSize: 13,
                     background: A.bg,
+                    color: A.text,
                   }}
                   required
                 />
@@ -316,6 +318,7 @@ export default function Dashboard() {
                     borderRadius: 6,
                     fontSize: 13,
                     background: A.bg,
+                    color: A.text,
                   }}
                 />
               </div>
@@ -331,6 +334,7 @@ export default function Dashboard() {
                     borderRadius: 6,
                     fontSize: 13,
                     background: A.bg,
+                    color: A.text,
                   }}
                 >
                   <option value="employee">Employee</option>
@@ -349,6 +353,7 @@ export default function Dashboard() {
                     borderRadius: 6,
                     fontSize: 13,
                     background: A.bg,
+                    color: A.text,
                   }}
                 >
                   <option value="unassigned">Unassigned</option>
@@ -561,8 +566,8 @@ export default function Dashboard() {
                         }}
                       />
                     </td>
-                    <td style={{ padding: '12px', verticalAlign: 'middle', wordBreak: 'break-all' }}>{user.email}</td>
-                    <td style={{ padding: '12px', verticalAlign: 'middle' }}>{user.full_name || '—'}</td>
+                    <td style={{ padding: '12px', verticalAlign: 'middle', wordBreak: 'break-all', color: A.text }}>{user.email}</td>
+                    <td style={{ padding: '12px', verticalAlign: 'middle', color: A.text }}>{user.full_name || '—'}</td>
                     <td style={{ padding: '12px', verticalAlign: 'middle' }}>
                       <select
                         value={user.role}
@@ -574,6 +579,7 @@ export default function Dashboard() {
                           fontSize: 12,
                           fontWeight: 500,
                           background: A.bg,
+                          color: A.text,
                         }}
                       >
                         <option value="employee">Employee</option>
@@ -591,6 +597,7 @@ export default function Dashboard() {
                           fontSize: 12,
                           fontWeight: 500,
                           background: A.bg,
+                          color: A.text,
                         }}
                       >
                         <option value="unassigned">Unassigned</option>
@@ -610,8 +617,8 @@ export default function Dashboard() {
                         <span style={{ fontSize: 13, color: A.text }}>{user.suspended ? 'Yes' : 'No'}</span>
                       </label>
                     </td>
-                    <td style={{ padding: '12px', verticalAlign: 'middle' }}>{formatDate(user.created_at)}</td>
-                    <td style={{ padding: '12px', verticalAlign: 'middle' }}>{formatDate(user.last_sign_in_at)}</td>
+                    <td style={{ padding: '12px', verticalAlign: 'middle', color: A.text }}>{formatDate(user.created_at)}</td>
+                    <td style={{ padding: '12px', verticalAlign: 'middle', color: A.text }}>{formatDate(user.last_sign_in_at)}</td>
                     <td style={{ padding: '12px', verticalAlign: 'middle' }}>
                       {!deleteUserConfirm || deleteUserConfirm !== user.id ? (
                         <button
@@ -708,17 +715,17 @@ export default function Dashboard() {
                   key={doc.title}
                   style={{ borderBottom: `1px solid ${A.border}` }}
                 >
-                  <td style={{ padding: '12px', verticalAlign: 'middle', wordBreak: 'break-all', maxWidth: 300 }}>
+                  <td style={{ padding: '12px', verticalAlign: 'middle', wordBreak: 'break-all', maxWidth: 300, color: A.text }}>
                     {doc.title}
                   </td>
-                  <td style={{ padding: '12px', verticalAlign: 'middle' }}>
+                  <td style={{ padding: '12px', verticalAlign: 'middle', color: A.text }}>
                     {resolveUploaderEmail(doc.uploaded_by)}
                   </td>
-                  <td style={{ padding: '12px', verticalAlign: 'middle' }}>{doc.chunkCount?.toLocaleString() || '0'}</td>
-                  <td style={{ padding: '12px', verticalAlign: 'middle' }}>
+                  <td style={{ padding: '12px', verticalAlign: 'middle', color: A.text }}>{doc.chunkCount?.toLocaleString() || '0'}</td>
+                  <td style={{ padding: '12px', verticalAlign: 'middle', color: A.text }}>
                     {(doc.totalChars || 0).toLocaleString()} characters
                   </td>
-                  <td style={{ padding: '12px', verticalAlign: 'middle' }}>{formatDate(doc.firstUploaded)}</td>
+                  <td style={{ padding: '12px', verticalAlign: 'middle', color: A.text }}>{formatDate(doc.firstUploaded)}</td>
                   <td style={{ padding: '12px', verticalAlign: 'middle' }}>
                     {!deleteDocumentConfirm ||
                      (deleteDocumentConfirm.title !== doc.title || deleteDocumentConfirm.uploaded_by !== doc.uploaded_by) ? (
@@ -828,7 +835,7 @@ export default function Dashboard() {
                 <span style={{ fontSize: 13, color: A.muted }}>
                   {new Date(event.created_at).toLocaleString()}
                 </span>
-                <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'capitalize' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'capitalize', color: A.text }}>
                   {event.action === 'chat' ? 'Chat' : event.action === 'upload' ? 'Upload' : 'Admin Action'}
                 </span>
               </div>
