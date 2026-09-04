@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { supabase } from '../lib/supabase.js';
+import { useTheme } from '../context/ThemeContext.jsx';
 
 const COLORS = {
   primary: '#0F6E7D',
@@ -13,34 +14,66 @@ const COLORS = {
   warning: '#D97706',
   success: '#2E8B57',
   border: '#E3EEEF',
+  inlineCodeBg: '#F0F4F5',
+  codeBlockBg: '#0F2A2E',
+  codeBlockText: '#E8F4F5',
+  activeItemBg: '#EAF3F4',
+  hoverBg: '#F0F4F5',
+  sourceBg: '#EAF3F4',
+  successBg: '#EAF6F0',
+  warningBg: '#FEF3E7',
+  warningBorder: '#F5D9AE',
+  disabled: '#7FA9AF',
+  brand: '#0F2A2E',
 };
 
-const MAX_QUESTION_LEN = 1000;
-const MAX_HISTORY_TURNS = 6;
+const DARK_COLORS = {
+  primary: '#22A7B3',
+  bg: '#0F1416',
+  surface: '#1A2226',
+  text: '#E8EDEE',
+  muted: '#8A9BA0',
+  warning: '#F59E0B',
+  success: '#34D399',
+  border: '#2A3438',
+  inlineCodeBg: '#232D32',
+  codeBlockBg: '#0D1117',
+  codeBlockText: '#C9D1D9',
+  activeItemBg: '#16282C',
+  hoverBg: '#222D32',
+  sourceBg: '#16282C',
+  successBg: '#0D2818',
+  warningBg: '#3D2200',
+  warningBorder: '#5C3A00',
+  disabled: '#3A4A4E',
+  brand: '#E8EDEE',
+};
+
+const MAX_HISTORY_TURNS = 40;
 const MAX_FILE_SIZE_MB = 8;
 
-function Markdown({ children }) {
+const Markdown = React.memo(function Markdown({ children, activeColor }) {
   return (
-    <div style={{ fontSize: 14, lineHeight: 1.6, color: COLORS.text }}>
+    <div style={{ fontSize: 14, lineHeight: 1.6, color: activeColor.text, overflowWrap: 'break-word', wordBreak: 'break-word' }}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ children }) => <p style={{ margin: '0 0 8px' }}>{children}</p>,
+          p: ({ children }) => <div style={{ margin: '0 0 8px' }}>{children}</div>,
           ul: ({ children }) => <ul style={{ margin: '0 0 8px', paddingLeft: 20 }}>{children}</ul>,
           ol: ({ children }) => <ol style={{ margin: '0 0 8px', paddingLeft: 20 }}>{children}</ol>,
           li: ({ children }) => <li style={{ marginBottom: 3 }}>{children}</li>,
-          strong: ({ children }) => <strong style={{ color: COLORS.text }}>{children}</strong>,
+          strong: ({ children }) => <strong style={{ color: activeColor.text }}>{children}</strong>,
           code: ({ inline, children }) =>
             inline ? (
               <code style={{
-                background: '#F0F4F5', padding: '2px 5px', borderRadius: 4,
-                fontSize: 12.5, fontFamily: 'Consolas, Monaco, monospace', color: '#0F6E7D',
+                background: activeColor.inlineCodeBg, padding: '2px 5px', borderRadius: 4,
+                fontSize: 12.5, fontFamily: 'Consolas, Monaco, monospace', color: activeColor.primary,
               }}>
                 {children}
               </code>
             ) : (
               <pre style={{
-                background: '#0F2A2E', color: '#E8F4F5', padding: '12px 14px', borderRadius: 8,
+                background: activeColor.codeBlockBg, color: activeColor.codeBlockText, padding: '12px 14px', borderRadius: 8,
                 overflowX: 'auto', fontSize: 12.5, fontFamily: 'Consolas, Monaco, monospace',
                 margin: '8px 0', lineHeight: 1.5,
               }}>
@@ -53,9 +86,10 @@ function Markdown({ children }) {
       </ReactMarkdown>
     </div>
   );
-}
+});
 
 export default function Chat() {
+  const { theme, toggleTheme } = useTheme();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -67,25 +101,125 @@ export default function Chat() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [uploadSuccess, setUploadSuccess] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarHoverId, setSidebarHoverId] = useState(null); // For hover state of conversation items
+  const [projects, setProjects] = useState([]); // List of projects
+  const [activeProjectFilter, setActiveProjectFilter] = useState(null); // Currently selected project filter (null = show all)
+  const [fileButtonHover, setFileButtonHover] = useState(false); // For file attachment button hover
+  const [micButtonHover, setMicButtonHover] = useState(false); // For microphone button hover
+  const [openMenuId, setOpenMenuId] = useState(null); // For three-dot menu
+  const [moveSubmenuId, setMoveSubmenuId] = useState(null); // For move to project submenu
+  const [submenuPosition, setSubmenuPosition] = useState({ top: 0, left: 0 }); // For submenu positioning
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null); // FIX 2: For conversation deletion confirmation
+  const [hoveredMenuItem, setHoveredMenuItem] = useState(null); // FIX 3: For dropdown menu item hover
+  const [viewportWidth, setViewportWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   const bottomRef = useRef(null);
   const fileInputRef = useRef(null);
-  const [sidebarOpen, setSidebarOpen] = useState(typeof window !== 'undefined' && window.innerWidth > 768);
+  const textareaRef = useRef(null);
+  const messagesContainerRef = useRef(null); // For auto-scroll functionality
+  const abortControllerRef = useRef(null);
+  const speechRef = useRef(null); // For SpeechRecognition instance
+  const [isListening, setIsListening] = useState(false); // Mic button state
+  const forceScrollToBottomRef = useRef(false);
+
+  const A = theme === 'dark' ? DARK_COLORS : COLORS;
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const handleResize = () => {
-        setSidebarOpen(window.innerWidth > 768);
+        const width = window.innerWidth;
+        setViewportWidth(width);
       };
       window.addEventListener('resize', handleResize);
+      // Set initial value
+      setViewportWidth(window.innerWidth);
       return () => window.removeEventListener('resize', handleResize);
     }
   }, []);
 
+  // Close menus when clicking outside
   useEffect(() => {
-    loadConversations();
-  }, []);
+    if (openMenuId !== null || moveSubmenuId !== null) {
+      const handleClickOutside = (event) => {
+        // Check if click is outside both menus
+        const isOutsideMenu = !openMenuId || !document.getElementById(`menu-${openMenuId}`)?.contains(event.target);
+        const isOutsideSubmenu = !moveSubmenuId || !document.getElementById(`submenu-${moveSubmenuId}`)?.contains(event.target);
 
-  const loadConversations = async () => {
+        if (isOutsideMenu && isOutsideSubmenu) {
+          setOpenMenuId(null);
+          setMoveSubmenuId(null);
+          setConfirmDeleteId(null); // FIX 2: Also reset deletion confirmation when clicking outside
+        }
+      };
+
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [openMenuId, moveSubmenuId, confirmDeleteId]);
+
+  useEffect(() => {
+    loadProjects();
+    loadConversations(activeProjectFilter);
+  }, [activeProjectFilter]);
+
+  // Auto-resize textarea on input
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const newHeight = Math.min(textareaRef.current.scrollHeight, 200);
+      textareaRef.current.style.height = newHeight + 'px';
+      // If content exceeds 200px, make it scrollable internally
+      if (textareaRef.current.scrollHeight > 200) {
+        textareaRef.current.style.overflowY = 'auto';
+      } else {
+        textareaRef.current.style.overflowY = 'hidden';
+      }
+    }
+  }, [input]);
+
+  // Reset textarea height after sending a message
+  useEffect(() => {
+    if (!sending && textareaRef.current && input.trim() === '') {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = (textareaRef.current.scrollHeight) + 'px';
+      textareaRef.current.style.overflowY = 'hidden';
+    }
+  }, [sending, input]);
+
+  // Auto-scroll to bottom when user is near bottom and new messages arrive
+  useEffect(() => {
+    if (messagesContainerRef.current) {
+      const container = messagesContainerRef.current;
+      if (forceScrollToBottomRef.current) {
+        container.scrollTop = container.scrollHeight;
+        forceScrollToBottomRef.current = false;
+      } else {
+        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+        // Only auto-scroll if user is near bottom or if this is the first render of a new message
+        if (isNearBottom || messages.length === 0) {
+          container.scrollTop = container.scrollHeight;
+        }
+      }
+    }
+  }, [messages]);
+
+
+  const loadProjects = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setProjects([]);
+        return;
+      }
+      const { data, error } = await supabase.from('projects').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+      if (error) throw error;
+      setProjects(data);
+    } catch (err) {
+      console.error('Error loading projects:', err);
+    }
+  };
+
+  const loadConversations = async (projectId = null) => {
     setLoadingConversations(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -93,16 +227,19 @@ export default function Chat() {
         setConversations([]);
         return;
       }
-      const { data, error } = await supabase
-        .from('conversations')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false });
+      let query = supabase.from('conversations').select('*').eq('user_id', user.id).order('updated_at', { ascending: false });
+
+      if (projectId !== null) {
+        query = query.eq('project_id', projectId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       setConversations(data);
       // Auto-select the most recent conversation if none is active
       if (activeConversationId === null && data.length > 0) {
         setActiveConversationId(data[0].id);
+        forceScrollToBottomRef.current = true;
         loadConversationMessages(data[0].id);
       }
     } catch (err) {
@@ -115,11 +252,7 @@ export default function Chat() {
   const loadConversationMessages = async (conversationId) => {
     setLoadingMessages(true);
     try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true });
+      const { data, error } = await supabase.from('messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true });
       if (error) throw error;
       // Transform database rows to match component's expected shape
       const transformedMessages = data.map(msg => ({
@@ -149,6 +282,7 @@ export default function Chat() {
 
   const handleSelectConversation = (id) => {
     setActiveConversationId(id);
+    forceScrollToBottomRef.current = true;
     loadConversationMessages(id);
     // Reset upload states when switching conversations
     setUploading(false);
@@ -186,7 +320,7 @@ export default function Chat() {
       {
         id: uploadMessageId,
         role: 'system',
-        text: `         📄 Uploading ${file.name}...`,
+        text: `📄 Uploading ${file.name}...`,
         type: 'uploading',
         fileName: file.name
       }
@@ -201,6 +335,7 @@ export default function Chat() {
 
       const body = { title: file.name };
 
+      // Front-end now accepts all file types, whether a given file type can actually be processed depends on the backend ingestion pipeline, which is unchanged by this fix.
       // Determine file type and process accordingly
       const allowedTextExtensions = ['.txt', '.md', '.markdown', '.json', '.js', '.jsx', '.ts', '.tsx', '.css', '.html', '.py', '.java', '.c', '.cpp', '.cs', '.go', '.rb', '.php', '.sql', '.yaml', '.yml', '.sh', '.xml', '.csv'];
       const isTextFile = allowedTextExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
@@ -230,7 +365,21 @@ export default function Chat() {
         });
         body.pdfBase64 = base64;
       } else {
-        throw new Error('Unsupported file type');
+        // For other file types, we'll still try to upload and let the backend handle it
+        // Read as base64 for binary files
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = reader.result;
+            // Remove the data:url prefix to get raw base64
+            const base64Data = dataUrl.split(',')[1];
+            resolve(base64Data);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        body.dataBase64 = base64;
+        body.dataType = file.type;
       }
 
       // Upload to knowledge base
@@ -257,10 +406,19 @@ export default function Chat() {
         {
           id: uploadMessageId,
           role: 'system',
-          text: `      ✅ Added ${file.name} to the knowledge base (${data.chunksStored} chunks).`,
+          text: `✅ Added ${file.name} to the knowledge base (${data.chunksStored} chunks).`,
           type: 'success',
           fileName: file.name,
           chunksStored: data.chunksStored
+        }
+      ]);
+
+      // FIX 1: Also add an assistant message for conversation history
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: `I've added "${file.name}" to the knowledge base (${data.chunksStored} chunk(s)). You can ask me anything about its contents and I'll search it.`
         }
       ]);
 
@@ -273,7 +431,7 @@ export default function Chat() {
         {
           id: uploadMessageId,
           role: 'system',
-          text: `      ⚠      ️ Couldn't add ${file.name}: ${err.message}`,
+          text: `⚠️ Couldn't add ${file.name}: ${err.message}`,
           type: 'error',
           fileName: file.name
         }
@@ -292,10 +450,6 @@ export default function Chat() {
     e.preventDefault();
     const question = input.trim();
     if (!question || sending) return;
-    if (question.length > MAX_QUESTION_LEN) {
-      setError(`Question is too long (max ${MAX_QUESTION_LEN} characters).`);
-      return;
-    }
 
     setError('');
     const history = messages
@@ -315,12 +469,9 @@ export default function Chat() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('No user');
         const title = question.length > 40 ? question.slice(0, 40) + '...' : question;
-        const { data, error } = await supabase
-          .from('conversations')
-          .insert([
+        const { data, error } = await supabase.from('conversations').insert([
             { user_id: user.id, title },
-          ])
-          .select();
+          ]).select();
         if (error) throw error;
         conversationId = data[0].id;
         setActiveConversationId(conversationId);
@@ -354,10 +505,7 @@ export default function Chat() {
         }
       ]);
       // Update conversation's updated_at
-      await supabase
-        .from('conversations')
-        .update({ updated_at: new Date() })
-        .eq('id', conversationId);
+      await supabase.from('conversations').update({ updated_at: new Date() }).eq('id', conversationId);
     } catch (err) {
       console.error('Error saving user message:', err);
       // We'll still proceed with the chat, but note that persistence might fail
@@ -365,6 +513,9 @@ export default function Chat() {
 
     const assistantIndex = messages.length + 1; // +1 for the user message we just added
     setMessages((prev) => [...prev, { role: 'assistant', text: '', sources: [] }]);
+
+    // Initialize abort controller for this request
+    abortControllerRef.current = new AbortController();
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -377,12 +528,13 @@ export default function Chat() {
             Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({ question, history }),
+          signal: abortControllerRef.current.signal,
         }
       );
 
       if (!res.ok || !res.body) {
         let errMsg = 'Something went wrong.';
-        try { const data = await res.json(); errMsg = data.error || errMsg; } catch {}
+        try { const data = await res.json(); errMsg = data.error || errMsg; } catch (e) {}
         setMessages((prev) => {
           const next = [...prev];
           next[assistantIndex] = { role: 'error', text: errMsg };
@@ -397,63 +549,115 @@ export default function Chat() {
       let accumulatedText = '';
       let sources = [];
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          let evt;
-          try { evt = JSON.parse(line); } catch { continue; }
-
-          if (evt.type === 'sources') {
-            sources = evt.sources;
-            setMessages((prev) => {
-              const next = [...prev];
-              next[assistantIndex] = { ...next[assistantIndex], sources };
-              return next;
-            });
-          } else if (evt.type === 'token') {
-            accumulatedText += evt.text;
-            setMessages((prev) => {
-              const next = [...prev];
-              next[assistantIndex] = { ...next[assistantIndex], text: accumulatedText };
-              return next;
-            });
-          } else if (evt.type === 'error') {
-            setMessages((prev) => {
-              const next = [...prev];
-              next[assistantIndex] = { role: 'error', text: evt.error };
-              return next;
-            });
-          }
-        }
-      }
-
-      // Save assistant message to DB after streaming completes
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        await supabase.from('messages').insert([
-          {
-            conversation_id: conversationId,
-            user_id: user.id,
-            role: 'assistant',
-            content: accumulatedText,
-            sources: sources,
-          }
+        await Promise.race([
+          (async () => {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+
+              for (const line of lines) {
+                if (!line.trim()) continue;
+                let evt;
+                try{ evt = JSON.parse(line); } catch { continue; }
+
+                if (evt.type === 'sources') {
+                  sources = evt.sources;
+                  setMessages((prev) => {
+                    const next = [...prev];
+                    next[assistantIndex] = { ...next[assistantIndex], sources };
+                    return next;
+                  });
+                } else if (evt.type === 'token') {
+                  accumulatedText += evt.text;
+                  setMessages((prev) => {
+                    const next = [...prev];
+                    next[assistantIndex] = { ...next[assistantIndex], text: accumulatedText };
+                    return next;
+                  });
+                } else if (evt.type === 'error') {
+                  setMessages((prev) => {
+                    const next = [...prev];
+                    next[assistantIndex] = { role: 'error', text: evt.error };
+                    return next;
+                  });
+                }
+              }
+            }
+          })(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Stream timeout')), 35000)
+          )
         ]);
-        // Update conversation's updated_at
-        await supabase
-          .from('conversations')
-          .update({ updated_at: new Date() })
-          .eq('id', conversationId);
-        // Refresh conversations list to update ordering
-        loadConversations();
+
+        // Save assistant message to DB after streaming completes
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          await supabase.from('messages').insert([
+            {
+              conversation_id: conversationId,
+              user_id: user.id,
+              role: 'assistant',
+              content: accumulatedText,
+              sources: sources,
+            }
+          ]);
+          // Update conversation's updated_at
+          await supabase.from('conversations').update({ updated_at: new Date() }).eq('id', conversationId);
+          // Refresh conversations list to update ordering
+          loadConversations();
+        } catch (err) {
+          console.error('Error saving assistant message:', err);
+        }
       } catch (err) {
-        console.error('Error saving assistant message:', err);
+        if (err.message === 'Stream timeout') {
+          // Timeout occurred
+          try {
+            await reader.cancel();
+          } finally {
+            setMessages((prev) => {
+              const next = [...prev];
+              next[assistantIndex] = { role: 'error', text: 'The response took too long. Please try again.' };
+              return next;
+            });
+          }
+        } else if (err.name === 'AbortError') {
+          // If the error is due to abort, treat as user-initiated stop (no error message)
+          // Save partial message as final
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            await supabase.from('messages').insert([
+              {
+                conversation_id: conversationId,
+                user_id: user.id,
+                role: 'assistant',
+                content: accumulatedText,
+                sources: sources,
+              }
+            ]);
+            // Update conversation's updated_at
+            await supabase
+              .from('conversations')
+              .update({ updated_at: new Date() })
+              .eq('id', conversationId);
+            // Refresh conversations list to update ordering
+            loadConversations();
+          } catch (saveErr) {
+            console.error('Error saving assistant message after abort:', saveErr);
+          }
+        } else {
+          // Other error (network, etc.)
+          setMessages((prev) => {
+            const next = [...prev];
+            next[assistantIndex] = { role: 'error', text: 'Network error. Please try again.' };
+            return next;
+          });
+        }
+      } finally {
+        reader.releaseLock();
       }
     } catch (err) {
       setMessages((prev) => {
@@ -463,13 +667,118 @@ export default function Chat() {
       });
     } finally {
       setSending(false);
+      abortControllerRef.current = null;
+    }
+  };
+
+  // Speech recognition handlers
+  const startListening = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      // Speech recognition not supported
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-IN';
+
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map(result => result[0])
+        .map(result => result.transcript)
+        .join('');
+      setInput(transcript);
+      // Keep textarea height updated
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+        textareaRef.current.style.height = (textareaRef.current.scrollHeight) + 'px';
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      speechRef.current = null;
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+      speechRef.current = null;
+    };
+
+    recognition.start();
+    speechRef.current = recognition;
+    setIsListening(true);
+  };
+
+  const stopListening = () => {
+    if (speechRef.current) {
+      speechRef.current.stop();
+      speechRef.current = null;
+    }
+    setIsListening(false);
+  };
+
+  const toggleListening = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  };
+
+  // Delete conversation handler - FIX 2: Removed window.confirm
+  const handleDeleteConversation = async (convId) => {
+    try {
+      await supabase.from('conversations').delete().eq('id', convId);
+
+      // Remove from local state
+      setConversations(prev => prev.filter(conv => conv.id !== convId));
+
+      // If deleting active conversation, reset chat
+      if (activeConversationId === convId) {
+        setActiveConversationId(null);
+        setMessages([]);
+        setInput('');
+        setError('');
+        setUploading(false);
+        setUploadError('');
+        setUploadSuccess(null);
+      }
+    } catch (err) {
+      console.error('Error deleting conversation:', err);
+      setError('Failed to delete conversation. Please try again.');
+    }
+  };
+
+  // Move conversation to project handler
+  const handleMoveConversationToProject = async (convId, projectId) => {
+    try {
+      await supabase.from('conversations').update({ project_id: projectId }).eq('id', convId);
+
+      // Update local state
+      setConversations(prev =>
+        prev.map(conv =>
+          conv.id === convId ? { ...conv, project_id: projectId } : conv
+        )
+      );
+
+      // If the conversation is active, we may need to refresh the conversation list
+      // if the project filter is active and the project changed.
+      // We'll refresh the conversation list to reflect the change.
+      loadConversations(activeProjectFilter);
+    } catch (err) {
+      console.error('Error moving conversation to project:', err);
+      setError('Failed to move conversation. Please try again.');
     }
   };
 
   return (
     <div style={{
       minHeight: '100vh',
-      background: COLORS.bg,
+      background: A.bg,
       fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
       display: 'flex',
       height: '100vh',
@@ -477,39 +786,47 @@ export default function Chat() {
     }}>
       {/* Sidebar */}
       <div style={{
-        width: sidebarOpen ? 260 : 60,
-        background: COLORS.surface,
-        borderRight: `1px solid ${COLORS.border}`,
+        width: viewportWidth >= 1024 ? (sidebarOpen ? 260 : 60) : (sidebarOpen ? '85vw' : 60),
+        background: A.surface,
+        borderRight: viewportWidth >= 1024 ? `1px solid ${A.border}` : 'none',
         overflowY: 'auto',
         transition: 'width 0.2s ease',
         display: 'flex',
         flexDirection: 'column',
+        position: viewportWidth < 1024 && sidebarOpen ? 'fixed' : 'relative',
+        left: viewportWidth < 1024 && sidebarOpen ? 0 : 'auto',
+        top: 0,
+        bottom: 0,
+        zIndex: viewportWidth < 1024 && sidebarOpen ? 1000 : 'auto',
       }}>
-        {/* Hamburger button for mobile */}
+        {/* Hamburger button for mobile / toggle button */}
+        <div style={{
+          padding: '12px',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          position: viewportWidth < 1024 ? 'sticky' : 'relative',
+          top: 0,
+          zIndex: 1001,
+          background: viewportWidth < 1024 ? A.surface : 'transparent',
+        }}>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: A.primary,
+              fontSize: 20,
+              cursor: 'pointer',
+              padding: 0,
+              lineHeight: 1,
+            }}
+          >
+            {sidebarOpen ? '←' : '☰'}
+          </button>
+        </div>
         {!sidebarOpen && (
-          <div style={{
-            padding: '12px',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}>
-            <button
-              onClick={() => setSidebarOpen(true)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: COLORS.primary,
-                fontSize: 20,
-                cursor: 'pointer',
-                padding: 0,
-              }}
-            >
-                                                                                                                                                                              ☰
-            </button>
-          </div>
-        )}
-        {!sidebarOpen && (
-          <div style={{ height: 60, borderBottom: `1px solid ${COLORS.border}` }}></div>
+          <div style={{ height: 60, borderBottom: viewportWidth >= 1024 ? `1px solid ${A.border}` : 'none' }}></div>
         )}
         {sidebarOpen && (
           <>
@@ -518,10 +835,10 @@ export default function Chat() {
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: '14px 24px',
-              background: COLORS.surface,
-              borderBottom: `1px solid ${COLORS.border}`,
+              background: A.surface,
+              borderBottom: `1px solid ${A.border}`,
             }}>
-              <div style={{ fontWeight: 700, fontSize: 15, color: '#0F2A2E' }}>
+              <div style={{ fontWeight: 700, fontSize: viewportWidth < 640 ? 13 : 15, color: A.brand }}>
                 Knowledge Assistant
               </div>
               <button
@@ -529,10 +846,10 @@ export default function Chat() {
                 style={{
                   padding: '6px 12px',
                   borderRadius: 6,
-                  border: `1px solid ${COLORS.border}`,
-                  background: '#FFFFFF',
-                  color: COLORS.primary,
-                  fontSize: 12,
+                  border: `1px solid ${A.border}`,
+                  background: A.surface,
+                  color: A.primary,
+                  fontSize: viewportWidth < 640 ? 11 : 12,
                   fontWeight: 600,
                   cursor: 'pointer',
                 }}
@@ -545,12 +862,93 @@ export default function Chat() {
               overflowY: 'auto',
               padding: '12px 0',
             }}>
+              {/* Projects section */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontWeight: 600, fontSize: viewportWidth < 640 ? 11 : 13, color: A.text }}>
+                    Projects
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const name = window.prompt('Project name:');
+                      if (name && name.trim() !== '') {
+                        try {
+                          const { data: { user } } = await supabase.auth.getUser();
+                          if (!user) throw new Error('No user');
+                          const { data, error } = await supabase
+                            .from('projects')
+                            .insert([{ user_id: user.id, name: name.trim() }])
+                            .select();
+                          if (error) throw error;
+
+                          // Add the REAL returned project row with its real id
+                          setProjects(prev => [data[0], ...prev]);
+                        } catch (err) {
+                          console.error('Error creating project:', err);
+                          setError('Failed to create project. Please try again.');
+                        }
+                      }
+                    }}
+                    style={{
+                      padding: '4px 8px',
+                      borderRadius: 4,
+                      border: `1px solid ${A.border}`,
+                      background: A.surface,
+                      color: A.primary,
+                      fontSize: viewportWidth < 640 ? 10 : 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    + New Project
+                  </button>
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  {/* Show All option */}
+                  <div
+                    onClick={() => setActiveProjectFilter(null)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '8px 12px',
+                      marginBottom: 4,
+                      borderRadius: 4,
+                      background: activeProjectFilter === null ? A.activeItemBg : 'transparent',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ flex: 1, fontSize: viewportWidth < 640 ? 11 : 13, color: A.text }}>
+                      Show All
+                    </div>
+                  </div>
+                  {/* Projects list */}
+                  {projects.map((project) => (
+                    <div
+                      key={project.id}
+                      onClick={() => setActiveProjectFilter(project.id)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '8px 12px',
+                        marginBottom: 4,
+                        borderRadius: 4,
+                        background: activeProjectFilter === project.id ? A.activeItemBg : 'transparent',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ flex: 1, fontSize: viewportWidth < 640 ? 11 : 13, color: A.text }}>
+                        {project.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* End Projects section */}
               {loadingConversations ? (
-                <div style={{ textAlign: 'center', color: COLORS.muted, fontSize: 13, padding: '20px' }}>
+                <div style={{ textAlign: 'center', color: A.muted, fontSize: viewportWidth < 640 ? 11 : 13, padding: '20px' }}>
                   Loading conversations...
                 </div>
               ) : conversations.length === 0 ? (
-                <div style={{ textAlign: 'center', color: COLORS.muted, fontSize: 13, padding: '20px' }}>
+                <div style={{ textAlign: 'center', color: A.muted, fontSize: viewportWidth < 640 ? 11 : 13, padding: '20px' }}>
                   No conversations yet. Start a new chat!
                 </div>
               ) : (
@@ -563,26 +961,29 @@ export default function Chat() {
                       padding: '10px 16px',
                       margin: '0 8px',
                       borderRadius: 8,
-                      background: activeConversationId === conv.id ? '#EAF3F4' : 'transparent',
+                      background: activeConversationId === conv.id ? A.activeItemBg : 'transparent',
                       cursor: 'pointer',
                       transition: 'background 0.2s',
+                      position: 'relative',
                     }}
                     onClick={() => handleSelectConversation(conv.id)}
                     onMouseEnter={(e) => {
                       if (activeConversationId !== conv.id) {
-                        e.currentTarget.style.background = '#F0F4F5';
+                        e.currentTarget.style.background = A.hoverBg;
                       }
+                      setSidebarHoverId(conv.id);
                     }}
                     onMouseLeave={(e) => {
                       if (activeConversationId !== conv.id) {
                         e.currentTarget.style.background = 'transparent';
                       }
+                      setSidebarHoverId(null);
                     }}
                   >
                     <div style={{
                       flex: 1,
-                      fontSize: 13,
-                      color: activeConversationId === conv.id ? COLORS.primary : COLORS.text,
+                      fontSize: viewportWidth < 640 ? 11 : 13,
+                      color: activeConversationId === conv.id ? A.primary : A.text,
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -590,8 +991,8 @@ export default function Chat() {
                       {conv.title || 'New conversation'}
                     </div>
                     <div style={{
-                      fontSize: 11,
-                      color: COLORS.muted,
+                      fontSize: viewportWidth < 640 ? 9 : 11,
+                      color: A.muted,
                       marginLeft: 8,
                     }}>
                       {/* Format date */}
@@ -600,6 +1001,206 @@ export default function Chat() {
                         day: 'numeric',
                       })}
                     </div>
+
+                    {/* Project indicator dot, shown when this conversation belongs to a project and that project isn't the active filter */}
+                    {conv.project_id && activeProjectFilter !== conv.project_id && (
+                      <div style={{
+                        width: 8,
+                        height: 8,
+                        background: A.primary,
+                        borderRadius: 50,
+                        marginLeft: 6
+                      }}></div>
+                    )}
+
+                    {/* Three-dot menu button */}
+                    <div style={{
+                      position: 'absolute',
+                      right: 8,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: activeConversationId === conv.id ? A.primary : A.muted,
+                      fontSize: 18,
+                      cursor: sidebarHoverId === conv.id ? 'pointer' : 'default',
+                      display: (sidebarHoverId === conv.id || !sidebarOpen) ? 'flex' : 'none',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 24,
+                      height: 24
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // FIX 2 & 3: Reset confirmation state when opening a different menu
+                      setConfirmDeleteId(null);
+                      setOpenMenuId(openMenuId === conv.id ? null : conv.id);
+                    }}
+                    >
+                      ⋮
+                    </div>
+
+                    {/* Dropdown menu */}
+                    {openMenuId === conv.id && (
+                      <div
+                        id={`menu-${conv.id}`}
+                        style={{
+                          position: 'absolute',
+                          right: '8px',
+                          top: 'calc(100% + 4px)',
+                          background: A.surface,
+                          border: `1px solid ${A.border}`,
+                          borderRadius: '4px',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                          zIndex: '1000',
+                          padding: '4px 0',
+                          minWidth: '100px',
+                        }}
+                      >
+                        {/* Delete option */}
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // FIX 2: Two-step confirmation
+                            if (confirmDeleteId === conv.id) {
+                              // Second click - actually delete
+                              handleDeleteConversation(conv.id);
+                              setOpenMenuId(null);
+                              setConfirmDeleteId(null);
+                            } else {
+                              // First click - show confirmation
+                              setConfirmDeleteId(conv.id);
+                            }
+                          }}
+                          onMouseEnter={() => {
+                            // FIX 3: Set hover state for delete option
+                            setHoveredMenuItem(`delete-${conv.id}`);
+                          }}
+                          onMouseLeave={() => {
+                            // FIX 3: Clear hover state
+                            setHoveredMenuItem(null);
+                          }}
+                          style={{
+                            padding: '8px 12px',
+                            color: A.warning,
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            background: hoveredMenuItem === `delete-${conv.id}` ? A.warningBg : 'transparent',
+                          }}
+                        >
+                          {confirmDeleteId === conv.id ? 'Confirm delete?' : 'Delete'}
+                        </div>
+
+                        {/* Move to project option */}
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (moveSubmenuId === conv.id) {
+                              setMoveSubmenuId(null);
+                            } else {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setSubmenuPosition({ top: rect.top, left: rect.right + 4 });
+                              setMoveSubmenuId(conv.id);
+                            }
+                          }}
+                          onMouseEnter={() => {
+                            // FIX 3: Set hover state for move option
+                            setHoveredMenuItem(`move-${conv.id}`);
+                          }}
+                          onMouseLeave={() => {
+                            // FIX 3: Clear hover state
+                            setHoveredMenuItem(null);
+                          }}
+                          style={{
+                            padding: '8px 12px',
+                            color: A.primary,
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            background: hoveredMenuItem === `move-${conv.id}` ? A.activeItemBg : 'transparent',
+                          }}
+                        >
+                          Move to project
+                        </div>
+
+                        {/* Move to project submenu */}
+                        {moveSubmenuId === conv.id && (
+                          <div
+                            id={`submenu-${conv.id}`}
+                            style={{
+                              position: 'fixed',
+                              top: submenuPosition.top,
+                              left: submenuPosition.left,
+                              background: A.surface,
+                              border: `1px solid ${A.border}`,
+                              borderRadius: '4px',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                              zIndex: 1001,
+                              padding: '4px 0',
+                              minWidth: '120px',
+                            }}
+                          >
+                            {/* Remove from project option if applicable */}
+                            {conv.project_id && (
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMoveConversationToProject(conv.id, null);
+                                  setOpenMenuId(null);
+                                  setMoveSubmenuId(null);
+                                }}
+                                onMouseEnter={() => {
+                                  // FIX 3: Set hover state for remove option
+                                  setHoveredMenuItem(`remove-${conv.id}`);
+                                }}
+                                onMouseLeave={() => {
+                                  // FIX 3: Clear hover state
+                                  setHoveredMenuItem(null);
+                                }}
+                                style={{
+                                  padding: '8px 12px',
+                                  color: A.warning,
+                                  fontSize: '12px',
+                                  cursor: 'pointer',
+                                  background: hoveredMenuItem === `remove-${conv.id}` ? A.warningBg : 'transparent',
+                                }}
+                              >
+                                Remove from project
+                              </div>
+                            )}
+
+                            {/* All projects options */}
+                            {projects.map((project) => (
+                              <div
+                                key={project.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMoveConversationToProject(conv.id, project.id);
+                                  setOpenMenuId(null);
+                                  setMoveSubmenuId(null);
+                                }}
+                                onMouseEnter={() => {
+                                  // FIX 3: Set hover state for project option
+                                  setHoveredMenuItem(`project-${conv.id}-${project.id}`);
+                                }}
+                                onMouseLeave={() => {
+                                  // FIX 3: Clear hover state
+                                  setHoveredMenuItem(null);
+                                }}
+                                style={{
+                                  padding: '8px 12px',
+                                  color: project.id === conv.project_id ? A.muted : A.primary,
+                                  fontSize: '12px',
+                                  cursor: 'pointer',
+                                  background: hoveredMenuItem === `project-${conv.id}-${project.id}` ? A.activeItemBg : 'transparent',
+                                }}
+                              >
+                                {project.name}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))
               )}
@@ -616,31 +1217,52 @@ export default function Chat() {
       }}>
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '14px 24px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`,
+          padding: '14px 24px', background: A.surface, borderBottom: `1px solid ${A.border}`,
         }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: '#0F2A2E' }}>
+          <div style={{ fontWeight: 700, fontSize: viewportWidth < 640 ? 13 : 15, color: A.brand }}>
             Knowledge Assistant
           </div>
-          {sidebarOpen && (
-            <Link to="/" style={{ fontSize: 12.5, color: COLORS.primary, fontWeight: 600, textDecoration: 'none' }}>
-              ← Back to Home
-            </Link>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {sidebarOpen && (
+              <Link to="/" style={{ fontSize: viewportWidth < 640 ? 10.5 : 12.5, color: A.primary, fontWeight: 600, textDecoration: 'none' }}>
+                ← Back to Home
+              </Link>
+            )}
+            <button
+              onClick={toggleTheme}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: A.primary,
+                fontSize: 20,
+                cursor: 'pointer',
+                padding: 0,
+                lineHeight: 1,
+              }}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+          </div>
         </div>
 
-        <div style={{
-          flex: 1,
-          maxWidth: 760,
-          width: '100%',
-          margin: '0 auto',
-          padding: '24px 20px 140px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 16,
-          overflowY: 'auto',
-        }}>
+        <div
+          ref={messagesContainerRef}
+          style={{
+            flex: 1,
+            maxWidth: viewportWidth >= 1024 ? 800 : 'none',
+            width: '100%',
+            margin: viewportWidth >= 1024 ? '0 auto' : '0',
+            padding: '24px 20px 140px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+          }}
+        >
           {messages.length === 0 && activeConversationId === null && (
-            <div style={{ textAlign: 'center', color: COLORS.muted, fontSize: 13.5, marginTop: 60 }}>
+            <div style={{ textAlign: 'center', color: A.muted, fontSize: viewportWidth < 640 ? 11.5 : 13.5, marginTop: 60 }}>
               Ask me anything — I can help with code, IT questions, troubleshooting, or reference your team's uploaded docs when relevant.
             </div>
           )}
@@ -649,18 +1271,18 @@ export default function Chat() {
             // Handle different message types for styling
             if (m.role === 'system') {
               // System messages (file uploads)
-              let bgColor = '#F0F4F5'; // default light gray
-              let textColor = COLORS.muted;
+              let bgColor = A.hoverBg; // default light gray
+              let textColor = A.muted;
 
               if (m.type === 'success') {
-                bgColor = '#EAF6F0'; // light teal/green
-                textColor = COLORS.success;
+                bgColor = A.successBg; // light teal/green
+                textColor = A.success;
               } else if (m.type === 'error') {
-                bgColor = '#FEF3E7'; // light orange/red
-                textColor = COLORS.warning;
+                bgColor = A.warningBg; // light orange/red
+                textColor = A.warning;
               } else if (m.type === 'uploading') {
-                bgColor = '#EAF3F4'; // light blue/teal
-                textColor = COLORS.primary;
+                bgColor = A.activeItemBg; // light blue/teal
+                textColor = A.primary;
               }
 
               return (
@@ -673,8 +1295,9 @@ export default function Chat() {
                   maxWidth: '80%',
                   background: bgColor,
                   borderRadius: 12,
-                  fontSize: 13,
+                  fontSize: viewportWidth < 640 ? 11 : 13,
                   color: textColor,
+                  overflowWrap: 'break-word', wordBreak: 'break-word',
                 }}>
                   {m.text}
                 </div>
@@ -686,30 +1309,35 @@ export default function Chat() {
               <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
                 {m.role === 'user' && (
                   <div style={{
-                    maxWidth: '75%', background: COLORS.primary, color: '#fff',
-                    padding: '10px 14px', borderRadius: '14px 14px 2px 14px', fontSize: 14, lineHeight: 1.5,
+                    maxWidth: viewportWidth < 640 ? '90%' : viewportWidth < 1024 ? '85%' : '75%',
+                    background: A.primary, color: '#fff',
+                    padding: '10px 14px', borderRadius: '14px 14px 2px 14px', fontSize: viewportWidth < 640 ? 12 : 14, lineHeight: 1.5,
+                    overflowWrap: 'break-word', wordBreak: 'break-word',
                   }}>
                     {m.text}
                   </div>
                 )}
                 {m.role === 'assistant' && (
                   <div style={{
-                    maxWidth: '85%', background: COLORS.surface, border: `1px solid ${COLORS.border}`,
+                    maxWidth: viewportWidth < 640 ? '90%' : viewportWidth < 1024 ? '85%' : '85%',
+                    background: A.surface, border: `1px solid ${A.border}`,
                     padding: '12px 14px', borderRadius: '14px 14px 14px 2px',
+                    overflowWrap: 'break-word', wordBreak: 'break-word',
                   }}>
-                    {m.text ? <Markdown>{m.text}</Markdown> : (
-                      <span style={{ fontSize: 13, color: COLORS.muted }}>Thinking…</span>
+                    {m.text ? <Markdown activeColor={A}>{m.text}</Markdown> : (
+                      <span style={{ fontSize: viewportWidth < 640 ? 11 : 13, color: A.muted }}>Thinking…</span>
                     )}
                     {m.sources && m.sources.length > 0 && (
-                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${COLORS.border}` }}>
-                        <div style={{ fontSize: 11, color: COLORS.muted, marginBottom: 6, fontWeight: 600 }}>
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${A.border}` }}>
+                        <div style={{ fontSize: viewportWidth < 640 ? 9 : 11, color: A.muted, marginBottom: 6, fontWeight: 600 }}>
                           SOURCES
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                           {m.sources.map((s, si) => (
                             <span key={si} style={{
-                              fontSize: 11, padding: '3px 8px', borderRadius: 12,
-                              background: '#EAF3F4', color: COLORS.primary, fontWeight: 600,
+                              fontSize: viewportWidth < 640 ? 9 : 11, padding: '3px 8px', borderRadius: 12,
+                              background: A.sourceBg, color: A.primary, fontWeight: 600,
+                              overflowWrap: 'break-word', wordBreak: 'break-word', maxWidth: '100%',
                             }}>
                               {s.title} · {s.similarity}%
                             </span>
@@ -721,8 +1349,10 @@ export default function Chat() {
                 )}
                 {m.role === 'error' && (
                   <div style={{
-                    maxWidth: '85%', background: '#FEF3E7', border: '1px solid #F5D9AE',
-                    padding: '10px 14px', borderRadius: 10, fontSize: 13, color: COLORS.warning,
+                    maxWidth: viewportWidth < 640 ? '90%' : viewportWidth < 1024 ? '85%' : '85%',
+                    background: A.warningBg, border: `1px solid ${A.warningBorder}`,
+                    padding: '10px 14px', borderRadius: 10, fontSize: viewportWidth < 640 ? 11 : 13, color: A.warning,
+                    overflowWrap: 'break-word', wordBreak: 'break-word',
                   }}>
                     {m.text}
                   </div>
@@ -735,33 +1365,34 @@ export default function Chat() {
 
         <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`, padding: '16px 20px',
+          background: A.surface, borderTop: `1px solid ${A.border}`, padding: '16px 20px',
         }}>
           <form onSubmit={handleSend} style={{
-            maxWidth: 760, margin: '0 auto', display: 'flex', gap: 10, alignItems: 'flex-end',
+            maxWidth: viewportWidth >= 1024 ? 760 : '95%',
+            margin: '0 auto', display: 'flex', gap: 10, alignItems: 'flex-end',
+            width: viewportWidth < 1024 ? '100%' : 'auto',
           }}>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, flex: 1, minWidth: 0 }}>
               {/* File attachment button */}
               <label
                 htmlFor="file-input"
                 onClick={() => fileInputRef.current?.click()}
+                onMouseEnter={() => !uploading && setFileButtonHover(true)}
+                onMouseLeave={() => !uploading && setFileButtonHover(false)}
                 style={{
                   width: 36,
                   height: 36,
                   borderRadius: 8,
-                  border: `1px solid ${COLORS.border}`,
-                  background: uploading ? '#7FA9AF' : '#FFFFFF',
-                  color: uploading ? '#6B7280' : COLORS.primary,
+                  border: `1px solid ${A.border}`,
+                  background: !uploading && fileButtonHover ? A.activeItemBg : uploading ? A.disabled : A.surface,
+                  color: uploading ? A.muted : A.primary,
                   fontSize: 18,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: uploading ? 'default' : 'pointer',
                   transition: 'all 0.2s',
-                  '&:hover': {
-                    background: !uploading ? '#EAF3F4' : 'inherit',
-                    borderColor: !uploading ? COLORS.primary : 'inherit'
-                  }
+                  borderColor: !uploading && fileButtonHover ? A.primary : 'inherit'
                 }}
               >
                 +
@@ -775,14 +1406,41 @@ export default function Chat() {
                       handleFileUpload(file);
                     }
                   }}
-                  accept=".txt,.md,.markdown,.json,.js,.jsx,.ts,.tsx,.css,.html,.py,.java,.c,.cpp,.cs,.go,.rb,.php,.sql,.yaml,.yml,.sh,.xml,.csv,application/pdf"
+                  accept="*" /* Front-end now accepts all file types, whether a given file type can actually be processed depends on the backend ingestion pipeline, which is unchanged by this fix. */
                 />
               </label>
 
+              {/* Microphone button */}
+              <button
+                onClick={toggleListening}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  border: `1px solid ${A.border}`,
+                  background: !isListening && !((!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window))) && micButtonHover ? A.activeItemBg : isListening ? '#FF6B6B' : A.surface,
+                  color: isListening ? '#fff' : A.primary,
+                  fontSize: 18,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: !('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window) ? 'default' : 'pointer',
+                  opacity: !('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window) ? 0.5 : 1,
+                  transition: 'all 0.2s',
+                  borderColor: !isListening && !((!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window))) && micButtonHover ? A.primary : 'inherit'
+                }}
+                title={!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window) ? 'Voice input not supported in this browser' : ''}
+              >
+                🎤
+              </button>
+
               {/* Text input */}
               <textarea
+                ref={textareaRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -791,29 +1449,67 @@ export default function Chat() {
                 }}
                 placeholder="Ask a question…"
                 rows={1}
-                maxLength={MAX_QUESTION_LEN}
                 style={{
-                  flex: 1, padding: '10px 14px', border: `1px solid ${COLORS.border}`,
-                  borderRadius: 10, fontSize: 14, fontFamily: 'inherit', resize: 'none',
-                  outline: 'none', maxHeight: 120,
+                  flex: 1,
+                  minWidth: 0,
+                  minHeight: '2.5rem',
+                  maxHeight: '200px',
+                  padding: '14px 16px',
+                  border: `1px solid ${A.border}`,
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontFamily: 'inherit',
+                  resize: 'none',
+                  outline: 'none',
+                  overflowY: 'hidden',
+                  background: A.surface,
+                  color: A.text,
                 }}
               />
             </div>
-            <button
-              type="submit"
-              disabled={sending || !input.trim()}
-              style={{
-                padding: '10px 20px', border: 'none', borderRadius: 10,
-                background: (sending || !input.trim()) ? '#7FA9AF' : COLORS.primary,
-                color: '#fff', fontWeight: 600, fontSize: 14,
-                cursor: (sending || !input.trim()) ? 'default' : 'pointer',
-              }}
-            >
-              Send
-            </button>
+            {/* Send / Stop button */}
+            {sending ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (abortControllerRef.current) {
+                    abortControllerRef.current.abort();
+                  }
+                }}
+                style={{
+                  padding: '10px 20px',
+                  border: 'none',
+                  borderRadius: 10,
+                  background: '#FF6B6B', // Red for stop
+                  color: '#fff',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                }}
+              >
+                ■
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={!input.trim()}
+                style={{
+                  padding: '10px 20px',
+                  border: 'none',
+                  borderRadius: 10,
+                  background: !input.trim() ? A.disabled : A.primary,
+                  color: '#fff',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: !input.trim() ? 'default' : 'pointer'
+                }}
+              >
+                Send
+              </button>
+            )}
           </form>
           {error && (
-            <div style={{ maxWidth: 760, margin: '8px auto 0', fontSize: 12, color: COLORS.warning }}>
+            <div style={{ maxWidth: viewportWidth >= 1024 ? 760 : '95%', margin: '8px auto 0', fontSize: 12, color: A.warning }}>
               {error}
             </div>
           )}
