@@ -139,6 +139,7 @@ const Markdown = React.memo(function Markdown({ children, activeColor }) {
 export default function Chat() {
   const { theme, toggleTheme } = useTheme();
   const speechSupported = ('webkitSpeechRecognition' in window) || ('SpeechRecognition' in window);
+  const ttsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -163,6 +164,7 @@ export default function Chat() {
   const [hoveredMenuItem, setHoveredMenuItem] = useState(null); // FIX 3: For dropdown menu item hover
   const [viewportWidth, setViewportWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   const [copiedId, setCopiedId] = useState(null);
+  const [speakingId, setSpeakingId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [pinnedIds, setPinnedIds] = useState(() => {
     try {
@@ -369,6 +371,39 @@ export default function Chat() {
       console.error('Copy failed:', err);
     }
   };
+
+  const speakMessage = (idx, text) => {
+    if (!('speechSynthesis' in window)) return;
+    if (speakingId === idx) {
+      window.speechSynthesis.cancel();
+      setSpeakingId(null);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const plain = String(text || '')
+      .replace(/```[a-z]*\n?/gi, '')
+      .replace(/\n/g, ' ')
+      .replace(/[*_#`>~\[\]|]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!plain) return;
+    const u = new SpeechSynthesisUtterance(plain);
+    u.lang = 'en-US';
+    u.rate = 1;
+    u.pitch = 1;
+    u.onend = () => setSpeakingId(null);
+    u.onerror = () => setSpeakingId(null);
+    setSpeakingId(idx);
+    window.speechSynthesis.speak(u);
+  };
+
+  useEffect(() => {
+    return () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   const handleEditMessage = (idx) => {
     const text = messages[idx]?.text || '';
@@ -1563,6 +1598,18 @@ export default function Chat() {
                           Knowledge Assistant
                         </span>
                         {m.text && !m._thinking && (
+                          <>
+                          <button
+                            onClick={() => speakMessage(i, m.text)}
+                            title={speakingId === i ? 'Stop reading' : ttsSupported ? 'Listen to answer' : 'Voice response not supported in this browser'}
+                            style={{
+                              background: speakingId === i ? A.activeItemBg : 'none',
+                              border: 'none', cursor: ttsSupported ? 'pointer' : 'default', color: speakingId === i ? A.primary : A.muted,
+                              fontSize: 13, padding: '2px 6px', borderRadius: 6, lineHeight: 1,
+                            }}
+                          >
+                            {speakingId === i ? '🛑' : '🔊'}
+                          </button>
                           <button
                             onClick={() => copyMessage(i, m.text)}
                             title="Copy"
@@ -1574,6 +1621,7 @@ export default function Chat() {
                           >
                             {copiedId === i ? '✓ Copied' : '⧉ Copy'}
                           </button>
+                          </>
                         )}
                       </div>
                       {m.text ? <Markdown activeColor={A}>{m.text}</Markdown> : (
