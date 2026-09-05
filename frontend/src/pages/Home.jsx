@@ -96,7 +96,7 @@ export default function Home() {
           <span style={{ fontWeight: 600 }}>IT Helpdesk:</span>{' '}
           <a
             href="mailto:spine_serversection@venusremedies.com"
-            style={{ color: A.text, fontWeight: 600, textDecoration: 'underline' }}
+            style={{ color: A.text, fontWeight: 600, textDecoration: 'none' }}
           >
             spine_serversection@venusremedies.com
           </a>
