@@ -83,6 +83,24 @@ export default function Home() {
             </Link>
           )}
         </div>
+        <div style={{
+          marginTop: 34,
+          paddingTop: 18,
+          borderTop: `1px solid ${A.border}`,
+          fontSize: 13,
+          color: A.text,
+          maxWidth: 420,
+          marginLeft: 'auto',
+          marginRight: 'auto',
+        }}>
+          <span style={{ fontWeight: 600 }}>IT Helpdesk:</span>{' '}
+          <a
+            href="mailto:spine_serversection@venusremedies.com"
+            style={{ color: A.text, fontWeight: 600, textDecoration: 'underline' }}
+          >
+            spine_serversection@venusremedies.com
+          </a>
+        </div>
       </div>
     </div>
   );
