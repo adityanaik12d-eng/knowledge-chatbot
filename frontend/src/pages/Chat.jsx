@@ -333,6 +333,7 @@ export default function Chat() {
 
   const handleNewConversation = () => {
     setActiveConversationId(null);
+    setSidebarOpen(false);
     setMessages([]);
     setInput('');
     setError('');
@@ -344,6 +345,7 @@ export default function Chat() {
 
   const handleSelectConversation = (id) => {
     setActiveConversationId(id);
+    setSidebarOpen(false);
     forceScrollToBottomRef.current = true;
     loadConversationMessages(id);
     // Reset upload states when switching conversations
