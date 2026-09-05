@@ -52,6 +52,60 @@ const DARK_COLORS = {
 const MAX_HISTORY_TURNS = 40;
 const MAX_FILE_SIZE_MB = 8;
 
+const SUGGESTIONS = [
+  'How do I reset my password?',
+  'Explain how AI chatbots work',
+  'Write a Python function to reverse a string',
+  'What are the key IT troubleshooting steps?',
+  'Summarize our team onboarding docs',
+];
+
+const getSourceText = (s) => {
+  const raw = s?.text || s?.chunk || s?.content || s?.excerpt || s?.snippet || '';
+  return raw
+    .replace(/```[a-z]*\n?/gi, '')
+    .replace(/[*_#`>~]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const CodeBlock = ({ children, activeColor }) => {
+  const [copied, setCopied] = useState(false);
+  const codeText = String(children || '').replace(/\n$/, '');
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(codeText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) { /* ignore */ }
+  };
+  return (
+    <div style={{ position: 'relative', margin: '8px 0', maxWidth: '100%' }}>
+      <button
+        onClick={copy}
+        title="Copy code"
+        style={{
+          position: 'absolute', top: 8, right: 8,
+          background: copied ? activeColor.successBg : 'rgba(0,0,0,0.35)',
+          border: 'none', borderRadius: 6,
+          color: copied ? activeColor.success : '#fff',
+          fontSize: 11, cursor: 'pointer', padding: '3px 8px', lineHeight: 1.2,
+          fontFamily: 'inherit', zIndex: 2,
+        }}
+      >
+        {copied ? '✓ Copied' : '⧉ Copy'}
+      </button>
+      <pre style={{
+        background: activeColor.codeBlockBg, color: activeColor.codeBlockText, padding: '12px 14px', borderRadius: 8,
+        overflowX: 'auto', fontSize: 12.5, fontFamily: 'Consolas, Monaco, monospace',
+        margin: 0, lineHeight: 1.5,
+      }}>
+        <code>{children}</code>
+      </pre>
+    </div>
+  );
+};
+
 const Markdown = React.memo(function Markdown({ children, activeColor }) {
   return (
     <div style={{ fontSize: 14, lineHeight: 1.6, color: activeColor.text, overflowWrap: 'break-word', wordBreak: 'break-word' }}>
@@ -72,13 +126,7 @@ const Markdown = React.memo(function Markdown({ children, activeColor }) {
                 {children}
               </code>
             ) : (
-              <pre style={{
-                background: activeColor.codeBlockBg, color: activeColor.codeBlockText, padding: '12px 14px', borderRadius: 8,
-                overflowX: 'auto', fontSize: 12.5, fontFamily: 'Consolas, Monaco, monospace',
-                margin: '8px 0', lineHeight: 1.5,
-              }}>
-                <code>{children}</code>
-              </pre>
+              <CodeBlock activeColor={activeColor}>{children}</CodeBlock>
             ),
         }}
       >
@@ -113,6 +161,16 @@ export default function Chat() {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null); // FIX 2: For conversation deletion confirmation
   const [hoveredMenuItem, setHoveredMenuItem] = useState(null); // FIX 3: For dropdown menu item hover
   const [viewportWidth, setViewportWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+  const [copiedId, setCopiedId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [pinnedIds, setPinnedIds] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('pinnedConversations') || '[]');
+    } catch {
+      return [];
+    }
+  });
+  const [previewSource, setPreviewSource] = useState(null);
   const bottomRef = useRef(null);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
@@ -291,6 +349,40 @@ export default function Chat() {
     setUploadSuccess(null);
   };
 
+  const togglePin = (id) => {
+    setPinnedIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id];
+      try {
+        localStorage.setItem('pinnedConversations', JSON.stringify(next));
+      } catch (e) { /* ignore storage errors */ }
+      return next;
+    });
+  };
+
+  const copyMessage = async (idx, text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(idx);
+      setTimeout(() => setCopiedId((prev) => (prev === idx ? null : prev)), 1500);
+    } catch (err) {
+      console.error('Copy failed:', err);
+    }
+  };
+
+  const handleEditMessage = (idx) => {
+    const text = messages[idx]?.text || '';
+    setInput(text);
+    setMessages((prev) => prev.slice(0, idx));
+    setError('');
+    setTimeout(() => textareaRef.current?.focus(), 50);
+  };
+
+  const persistPinned = (ids) => {
+    try {
+      localStorage.setItem('pinnedConversations', JSON.stringify(ids));
+    } catch (e) { /* ignore storage errors */ }
+  };
+
   const handleFileUpload = async (file) => {
     // Validate file
     if (!file) {
@@ -451,7 +543,10 @@ export default function Chat() {
     e.preventDefault();
     const question = input.trim();
     if (!question || sending) return;
+    await submitQuestion(question);
+  };
 
+  const submitQuestion = async (question) => {
     setError('');
     const history = messages
       .filter((m) => m.role === 'user' || m.role === 'assistant')
@@ -513,10 +608,36 @@ export default function Chat() {
     }
 
     const assistantIndex = messages.length + 1; // +1 for the user message we just added
-    setMessages((prev) => [...prev, { role: 'assistant', text: '', sources: [] }]);
+    await runStream(question, history, assistantIndex, conversationId);
+  };
 
+  const handleRegenerate = async () => {
+    if (sending) return;
+    let lastIdx = -1;
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      if (messages[i].role === 'user') { lastIdx = i; break; }
+    }
+    if (lastIdx === -1) return;
+    const lastQuestion = messages[lastIdx].text;
+    const trimmed = messages.slice(0, lastIdx + 1);
+    const history = trimmed
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .slice(-MAX_HISTORY_TURNS)
+      .map((m) => ({ role: m.role, content: m.text }));
+    setMessages(trimmed);
+    setError('');
+    await runStream(lastQuestion, history, trimmed.length, activeConversationId);
+  };
+
+  const runStream = async (question, history, assistantIndex, conversationId) => {
+    setSending(true);
     // Initialize abort controller for this request
     abortControllerRef.current = new AbortController();
+    setMessages((prev) => {
+      const next = [...prev];
+      next[assistantIndex] = { role: 'assistant', text: '', sources: [] };
+      return next;
+    });
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -776,6 +897,14 @@ export default function Chat() {
     }
   };
 
+  const q = (searchQuery || '').trim().toLowerCase();
+  const visibleConversations = q
+    ? conversations.filter((c) => (c.title || '').toLowerCase().includes(q))
+    : conversations;
+  const sortedConversations = visibleConversations
+    .slice()
+    .sort((a, b) => (pinnedIds.includes(b.id) ? 1 : 0) - (pinnedIds.includes(a.id) ? 1 : 0));
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -859,6 +988,28 @@ export default function Chat() {
               >
                 + New Chat
               </button>
+            </div>
+            <div style={{
+              padding: '8px 12px',
+              borderBottom: `1px solid ${A.border}`,
+            }}>
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search conversations…"
+                style={{
+                  width: '100%',
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: `1px solid ${A.border}`,
+                  background: A.bg,
+                  color: A.text,
+                  fontSize: 12,
+                  outline: 'none',
+                  fontFamily: 'inherit',
+                  boxSizing: 'border-box',
+                }}
+              />
             </div>
             <div style={{
               flex: 1,
@@ -954,8 +1105,12 @@ export default function Chat() {
                 <div style={{ textAlign: 'center', color: A.muted, fontSize: viewportWidth < 640 ? 11 : 13, padding: '20px' }}>
                   No conversations yet. Start a new chat!
                 </div>
+              ) : conversations.length === 0 ? (
+                <div style={{ textAlign: 'center', color: A.muted, fontSize: viewportWidth < 640 ? 11 : 13, padding: '20px' }}>
+                  No conversations yet. Start a new chat!
+                </div>
               ) : (
-                conversations.map((conv) => (
+                sortedConversations.map((conv) => (
                   <div
                     key={conv.id}
                     style={{
@@ -1015,6 +1170,34 @@ export default function Chat() {
                         marginLeft: 6
                       }}></div>
                     )}
+
+                    {/* Pin button */}
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        togglePin(conv.id);
+                      }}
+                      title={pinnedIds.includes(conv.id) ? 'Unpin' : 'Pin to top'}
+                      style={{
+                        position: 'absolute',
+                        right: 34,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: pinnedIds.includes(conv.id) ? A.warning : A.muted,
+                        fontSize: 14,
+                        cursor: 'pointer',
+                        width: 20,
+                        height: 20,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        lineHeight: 1,
+                      }}
+                    >
+                      {pinnedIds.includes(conv.id) ? '★' : '☆'}
+                    </div>
 
                     {/* Three-dot menu button */}
                     <div style={{
@@ -1204,7 +1387,7 @@ export default function Chat() {
                         )}
                       </div>
                     )}
-                  </div>
+</div>
                 ))
               )}
             </div>
@@ -1273,7 +1456,27 @@ export default function Chat() {
           }}>
           {messages.length === 0 && activeConversationId === null && (
             <div style={{ textAlign: 'center', color: A.muted, fontSize: viewportWidth < 640 ? 11.5 : 13.5, marginTop: 60 }}>
-              Ask me anything — I can help with code, IT questions, troubleshooting, or reference your team's uploaded docs when relevant.
+              <div style={{ fontWeight: 700, fontSize: viewportWidth < 640 ? 16 : 22, color: A.text, marginBottom: 8 }}>
+                How can I help you today?
+              </div>
+              <div>Ask me anything — code, IT questions, troubleshooting, or your team's uploaded docs.</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 24 }}>
+                {SUGGESTIONS.map((s, si) => (
+                  <button
+                    key={si}
+                    onClick={() => submitQuestion(s)}
+                    style={{
+                      padding: '8px 14px', borderRadius: 20,
+                      border: `1px solid ${A.border}`,
+                      background: A.surface, color: A.text,
+                      fontSize: viewportWidth < 640 ? 11 : 13,
+                      cursor: 'pointer', transition: 'all 0.2s',
+                    }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -1315,45 +1518,104 @@ export default function Chat() {
             }
 
             // Regular user/assistant/error messages
+            const isLast = i === messages.length - 1;
             return (
-              <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+              <div key={i} className="msg-enter" style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
                 {m.role === 'user' && (
                   <div style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
                     maxWidth: viewportWidth < 640 ? '90%' : viewportWidth < 1024 ? '85%' : '75%',
-                    background: A.primary, color: '#fff',
-                    padding: '10px 14px', borderRadius: '14px 14px 2px 14px', fontSize: viewportWidth < 640 ? 12 : 14, lineHeight: 1.5,
-                    overflowWrap: 'break-word', wordBreak: 'break-word',
                   }}>
-                    {m.text}
+                    <div style={{
+                      background: A.primary, color: '#fff',
+                      padding: '10px 14px', borderRadius: '14px 14px 2px 14px', fontSize: viewportWidth < 640 ? 12 : 14, lineHeight: 1.5,
+                      overflowWrap: 'break-word', wordBreak: 'break-word',
+                    }}>
+                      {m.text}
+                    </div>
+                    {!sending && (
+                      <button
+                        onClick={() => handleEditMessage(i)}
+                        title="Edit and resend"
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          color: A.muted, fontSize: 14, padding: 4, lineHeight: 1,
+                        }}
+                      >
+                        ✎
+                      </button>
+                    )}
                   </div>
                 )}
                 {m.role === 'assistant' && (
                   <div style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
                     maxWidth: viewportWidth < 640 ? '90%' : viewportWidth < 1024 ? '85%' : '85%',
-                    background: A.surface, border: `1px solid ${A.border}`,
-                    padding: '12px 14px', borderRadius: '14px 14px 14px 2px',
-                    overflowWrap: 'break-word', wordBreak: 'break-word',
+                    width: '100%',
                   }}>
-                    {m.text ? <Markdown activeColor={A}>{m.text}</Markdown> : (
-                      <span style={{ fontSize: viewportWidth < 640 ? 11 : 13, color: A.muted }}>Thinking…</span>
-                    )}
-                    {m.sources && m.sources.length > 0 && (
-                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${A.border}` }}>
-                        <div style={{ fontSize: viewportWidth < 640 ? 9 : 11, color: A.muted, marginBottom: 6, fontWeight: 600 }}>
-                          SOURCES
-                        </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                          {m.sources.map((s, si) => (
-                            <span key={si} style={{
-                              fontSize: viewportWidth < 640 ? 9 : 11, padding: '3px 8px', borderRadius: 12,
-                              background: A.sourceBg, color: A.primary, fontWeight: 600,
-                    overflowWrap: 'break-word', wordBreak: 'break-word',
-                            }}>
-                              {s.title} · {s.similarity}%
-                            </span>
-                          ))}
-                        </div>
+                    <div style={{
+                      background: A.surface, border: `1px solid ${A.border}`,
+                      padding: '12px 14px', borderRadius: '14px 14px 14px 2px',
+                      overflowWrap: 'break-word', wordBreak: 'break-word',
+                      width: '100%',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontSize: viewportWidth < 640 ? 9 : 11, color: A.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          Knowledge Assistant
+                        </span>
+                        {m.text && !m._thinking && (
+                          <button
+                            onClick={() => copyMessage(i, m.text)}
+                            title="Copy"
+                            style={{
+                              background: copiedId === i ? A.successBg : 'none',
+                              border: 'none', cursor: 'pointer', color: copiedId === i ? A.success : A.muted,
+                              fontSize: 13, padding: '2px 6px', borderRadius: 6, lineHeight: 1,
+                            }}
+                          >
+                            {copiedId === i ? '✓ Copied' : '⧉ Copy'}
+                          </button>
+                        )}
                       </div>
+                      {m.text ? <Markdown activeColor={A}>{m.text}</Markdown> : (
+                        <span className="thinking-pulse" style={{ fontSize: viewportWidth < 640 ? 11 : 13, color: A.muted }}>Thinking…</span>
+                      )}
+                      {m.sources && m.sources.length > 0 && (
+                        <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${A.border}` }}>
+                          <div style={{ fontSize: viewportWidth < 640 ? 9 : 11, color: A.muted, marginBottom: 6, fontWeight: 600 }}>
+                            SOURCES
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {m.sources.map((s, si) => (
+                              <span
+                                key={si}
+                                onClick={() => setPreviewSource(s)}
+                                title="Click to preview"
+                                style={{
+                                  fontSize: viewportWidth < 640 ? 9 : 11, padding: '3px 8px', borderRadius: 12,
+                                  background: A.sourceBg, color: A.primary, fontWeight: 600,
+                                  overflowWrap: 'break-word', wordBreak: 'break-word',
+                                  cursor: 'pointer', border: `1px solid transparent`,
+                                }}
+                              >
+                                {s.title} · {s.similarity}%
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {isLast && !sending && (
+                      <button
+                        onClick={handleRegenerate}
+                        style={{
+                          marginTop: 6, background: 'none', border: 'none', cursor: 'pointer',
+                          color: A.primary, fontSize: viewportWidth < 640 ? 11 : 12, fontWeight: 600,
+                          display: 'flex', alignItems: 'center', gap: 4, padding: '4px 6px', borderRadius: 6,
+                        }}
+                      >
+                        ↻ Regenerate
+                      </button>
                     )}
                   </div>
                 )}
@@ -1523,6 +1785,11 @@ export default function Chat() {
                 Send
               </button>
             )}
+          {input.length > 0 && (
+            <div style={{ textAlign: 'right', fontSize: 10.5, color: input.length > 20000 ? A.warning : A.muted, marginTop: 4, paddingRight: 4, fontFamily: 'monospace' }}>
+              {input.length.toLocaleString()} chars
+            </div>
+          )}
           </form>
           {error && (
             <div style={{ maxWidth: viewportWidth >= 1024 ? 760 : '95%', margin: '8px auto 0', fontSize: 12, color: A.warning }}>
@@ -1531,6 +1798,54 @@ export default function Chat() {
           )}
         </div>
       </div>
+
+      {/* Source preview panel */}
+      {previewSource && (
+        <>
+          <div
+            onClick={() => setPreviewSource(null)}
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.35)', zIndex: 2000,
+            }}
+          />
+          <div className="panel-slide" style={{
+            position: 'fixed', top: 0, right: 0, bottom: 0,
+            width: 'min(420px, 92vw)',
+            background: A.surface,
+            borderLeft: `1px solid ${A.border}`,
+            boxShadow: '0 0 24px rgba(0,0,0,0.2)',
+            zIndex: 2001,
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '14px 18px', borderBottom: `1px solid ${A.border}`,
+            }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: A.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {previewSource.title || 'Source'}
+              </div>
+              <button
+                onClick={() => setPreviewSource(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: A.muted, fontSize: 18, lineHeight: 1 }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ padding: '12px 18px', borderBottom: `1px solid ${A.border}`, fontSize: 12, color: A.primary, fontWeight: 600 }}>
+              Similarity {previewSource.similarity}%
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 18px', fontSize: 13, color: A.text, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              {getSourceText(previewSource) || (
+                <div style={{ fontStyle: 'italic', color: A.muted }}>
+                  This source does not include a text preview. It was used as a reference for the answer.
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
