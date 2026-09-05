@@ -101,7 +101,7 @@ export default function Chat() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [uploadSuccess, setUploadSuccess] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
   const [sidebarHoverId, setSidebarHoverId] = useState(null); // For hover state of conversation items
   const [projects, setProjects] = useState([]); // List of projects
   const [activeProjectFilter, setActiveProjectFilter] = useState(null); // Currently selected project filter (null = show all)
@@ -129,6 +129,7 @@ export default function Chat() {
       const handleResize = () => {
         const width = window.innerWidth;
         setViewportWidth(width);
+        if (width < 1024) setSidebarOpen(false);
       };
       window.addEventListener('resize', handleResize);
       // Set initial value
@@ -787,7 +788,7 @@ export default function Chat() {
     }}>
       {/* Sidebar */}
       <div style={{
-        width: viewportWidth >= 1024 ? (sidebarOpen ? 260 : 60) : (sidebarOpen ? '85vw' : 60),
+        width: viewportWidth >= 1024 ? (sidebarOpen ? 280 : 60) : (sidebarOpen ? '85vw' : 60),
         background: A.surface,
         borderRight: viewportWidth >= 1024 ? `1px solid ${A.border}` : 'none',
         overflowY: 'auto',
@@ -1255,7 +1256,7 @@ export default function Chat() {
           ref={messagesContainerRef}
           style={{
             flex: 1,
-            maxWidth: viewportWidth >= 1024 ? 800 : 'none',
+            maxWidth: viewportWidth >= 1024 ? 880 : 'none',
             width: '100%',
             margin: viewportWidth >= 1024 ? '0 auto' : '0',
             padding: '24px 20px 140px',
@@ -1372,8 +1373,8 @@ export default function Chat() {
           position: 'fixed', bottom: 0, left: 0, right: 0,
           background: A.surface, borderTop: `1px solid ${A.border}`, padding: '16px 20px',
         }}>
-          <form onSubmit={handleSend} style={{
-            maxWidth: viewportWidth >= 1024 ? 760 : '95%',
+<form onSubmit={handleSend} style={{
+            maxWidth: viewportWidth >= 1024 ? 840 : '95%',
             margin: '0 auto', display: 'flex', gap: 10, alignItems: 'flex-end',
             width: viewportWidth < 1024 ? '100%' : 'auto',
           }}>
