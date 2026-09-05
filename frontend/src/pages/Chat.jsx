@@ -1256,6 +1256,13 @@ export default function Chat() {
           ref={messagesContainerRef}
           style={{
             flex: 1,
+            width: '100%',
+            minWidth: 0,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+          }}
+        >
+          <div style={{
             maxWidth: viewportWidth >= 1024 ? 880 : 'none',
             width: '100%',
             margin: viewportWidth >= 1024 ? '0 auto' : '0',
@@ -1263,10 +1270,7 @@ export default function Chat() {
             display: 'flex',
             flexDirection: 'column',
             gap: 16,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-          }}
-        >
+          }}>
           {messages.length === 0 && activeConversationId === null && (
             <div style={{ textAlign: 'center', color: A.muted, fontSize: viewportWidth < 640 ? 11.5 : 13.5, marginTop: 60 }}>
               Ask me anything — I can help with code, IT questions, troubleshooting, or reference your team's uploaded docs when relevant.
@@ -1367,10 +1371,13 @@ export default function Chat() {
             );
           })}
           <div ref={bottomRef} />
+          </div>
         </div>
 
         <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
+          position: 'fixed', bottom: 0,
+          left: viewportWidth >= 1024 ? (sidebarOpen ? 280 : 60) : 0,
+          right: 0,
           background: A.surface, borderTop: `1px solid ${A.border}`, padding: '16px 20px',
         }}>
 <form onSubmit={handleSend} style={{
