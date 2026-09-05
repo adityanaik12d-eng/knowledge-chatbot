@@ -138,6 +138,7 @@ const Markdown = React.memo(function Markdown({ children, activeColor }) {
 
 export default function Chat() {
   const { theme, toggleTheme } = useTheme();
+  const speechSupported = ('webkitSpeechRecognition' in window) || ('SpeechRecognition' in window);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -1683,30 +1684,6 @@ export default function Chat() {
                 />
               </label>
 
-              {/* Microphone button */}
-              <button
-                onClick={toggleListening}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 8,
-                  border: `1px solid ${A.border}`,
-                  background: !isListening && !((!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window))) && micButtonHover ? A.activeItemBg : isListening ? '#FF6B6B' : A.surface,
-                  color: isListening ? '#fff' : A.primary,
-                  fontSize: 18,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: !('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window) ? 'default' : 'pointer',
-                  opacity: !('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window) ? 0.5 : 1,
-                  transition: 'all 0.2s',
-                  borderColor: !isListening && !((!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window))) && micButtonHover ? A.primary : 'inherit'
-                }}
-                title={!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window) ? 'Voice input not supported in this browser' : ''}
-              >
-                🎤
-              </button>
-
               {/* Text input */}
               <textarea
                 ref={textareaRef}
@@ -1742,47 +1719,70 @@ export default function Chat() {
                   boxSizing: 'border-box',
                 }}
               />
+              {/* Action button: mic while empty, turns into send arrow when typing, stop while streaming */}
+              {sending ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (abortControllerRef.current) {
+                      abortControllerRef.current.abort();
+                    }
+                  }}
+                  title="Stop generating"
+                  style={{
+                    width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+                    border: 'none', background: '#FF6B6B', color: '#fff',
+                    fontSize: 16, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  ■
+                </button>
+              ) : input.trim() ? (
+                <button
+                  type="submit"
+                  title="Send message"
+                  style={{
+                    width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+                    border: 'none', background: A.primary, color: '#fff',
+                    fontSize: 17, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.2s',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  }}
+                >
+                  ➤
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  onMouseEnter={() => setMicButtonHover(true)}
+                  onMouseLeave={() => setMicButtonHover(false)}
+                  title={speechSupported ? 'Speak your question' : 'Voice input not supported in this browser'}
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: '50%',
+                    border: `1px solid ${A.border}`,
+                    background: isListening ? '#FF6B6B' : micButtonHover ? A.activeItemBg : A.surface,
+                    color: isListening ? '#fff' : A.primary,
+                    fontSize: 17,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: speechSupported ? 'pointer' : 'default',
+                    opacity: speechSupported ? 1 : 0.5,
+                    flexShrink: 0,
+                    transition: 'all 0.2s',
+                    borderColor: micButtonHover ? A.primary : 'inherit',
+                  }}
+                >
+                  🎤
+                </button>
+              )}
             </div>
-            {/* Send / Stop button */}
-            {sending ? (
-              <button
-                type="button"
-                onClick={() => {
-                  if (abortControllerRef.current) {
-                    abortControllerRef.current.abort();
-                  }
-                }}
-                style={{
-                  padding: '10px 20px',
-                  border: 'none',
-                  borderRadius: 10,
-                  background: '#FF6B6B', // Red for stop
-                  color: '#fff',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  cursor: 'pointer',
-                }}
-              >
-                ■
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={!input.trim()}
-                style={{
-                  padding: '10px 20px',
-                  border: 'none',
-                  borderRadius: 10,
-                  background: !input.trim() ? A.disabled : A.primary,
-                  color: '#fff',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  cursor: !input.trim() ? 'default' : 'pointer'
-                }}
-              >
-                Send
-              </button>
-            )}
           {input.length > 0 && (
             <div style={{ textAlign: 'right', fontSize: 10.5, color: input.length > 20000 ? A.warning : A.muted, marginTop: 4, paddingRight: 4, fontFamily: 'monospace' }}>
               {input.length.toLocaleString()} chars
