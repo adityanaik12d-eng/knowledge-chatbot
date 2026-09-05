@@ -1116,7 +1116,7 @@ export default function Chat() {
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      padding: '10px 16px',
+                      padding: '10px 62px 10px 16px',
                       margin: '0 8px',
                       borderRadius: 8,
                       background: activeConversationId === conv.id ? A.activeItemBg : 'transparent',
