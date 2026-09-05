@@ -1411,12 +1411,10 @@ export default function Chat() {
           <div style={{ fontWeight: 700, fontSize: viewportWidth < 640 ? 13 : 15, color: A.brand }}>
             Knowledge Assistant
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {sidebarOpen && (
-              <Link to="/" style={{ fontSize: viewportWidth < 640 ? 10.5 : 12.5, color: A.primary, fontWeight: 600, textDecoration: 'none' }}>
-                ← Back to Home
-              </Link>
-            )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Link to="/" style={{ fontSize: viewportWidth < 640 ? 10.5 : 12.5, color: A.primary, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+              ← Back to Home
+            </Link>
             <button
               onClick={toggleTheme}
               style={{
